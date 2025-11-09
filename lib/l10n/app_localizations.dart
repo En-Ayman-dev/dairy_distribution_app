@@ -164,6 +164,17 @@ class AppLocalizations {
   String get failedToSaveCustomer => locale.languageCode == 'ar' ? 'فشل في حفظ العميل' : 'Failed to save customer';
   // Reports
   String get reportsTitle => locale.languageCode == 'ar' ? 'التقارير' : 'Reports';
+
+  // --- مفاتيح جديدة تمت إضافتها ---
+  String get confirm=>locale.languageCode=='ar'?'تأكيد':'Confirm';
+  String get reportType => locale.languageCode == 'ar' ? 'نوع التقرير' : 'Report Type';
+  String get reportTypeSummary => locale.languageCode == 'ar' ? 'ملخص' : 'Summary';
+  String get reportTypeDetailed => locale.languageCode == 'ar' ? 'تفصيلي' : 'Detailed';
+  String get selectCustomer => locale.languageCode == 'ar' ? 'اختر العميل' : 'Select Customer';
+  String get allCustomers => locale.languageCode == 'ar' ? 'كل العملاء' : 'All Customers';
+  String get selectProducts => locale.languageCode == 'ar' ? 'اختر المنتجات' : 'Select Products';
+  String productsSelected(Object count) => locale.languageCode == 'ar' ? '$count منتجات تم اختيارها' : '$count products selected';
+  String get generateReport => locale.languageCode == 'ar' ? 'إنشاء التقرير' : 'Generate Report';
   String get selectDateRange => locale.languageCode == 'ar' ? 'اختر نطاق التاريخ' : 'Select Date Range';
   String get fromLabel => locale.languageCode == 'ar' ? 'من' : 'From';
   String get toLabel => locale.languageCode == 'ar' ? 'إلى' : 'To';

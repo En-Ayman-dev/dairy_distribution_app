@@ -85,14 +85,14 @@ class _DistributionDetailScreenState extends State<DistributionDetailScreen> {
                   ...dist.items.map((it) => ListTile(
                         title: Text(it.productName),
                         subtitle: Text('${it.quantity} x ${it.price.toStringAsFixed(2)}'),
-                        trailing: Text('₹${it.subtotal.toStringAsFixed(2)}'),
+                        trailing: Text('ريال${it.subtotal.toStringAsFixed(2)}'),
                       )),
                   const Divider(),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(t.dashboardTotalSales, style: Theme.of(context).textTheme.titleMedium),
-                      Text('₹${dist.totalAmount.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text('ريال${dist.totalAmount.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -100,7 +100,7 @@ class _DistributionDetailScreenState extends State<DistributionDetailScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(t.outstandingLabel),
-                      Text('₹${dist.pendingAmount.toStringAsFixed(2)}'),
+                      Text('ريال${dist.pendingAmount.toStringAsFixed(2)}'),
                     ],
                   ),
                 ],

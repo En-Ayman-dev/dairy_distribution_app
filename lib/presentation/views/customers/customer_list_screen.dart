@@ -180,7 +180,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
             Text(customer.phone),
             if (customer.balance > 0)
               Text(
-                '${AppLocalizations.of(context)!.outstandingLabel}: ₹${customer.balance.toStringAsFixed(2)}',
+                '${AppLocalizations.of(context)!.outstandingLabel}: ريال${customer.balance.toStringAsFixed(2)}',
                 style: const TextStyle(
                   color: Colors.red,
                   fontWeight: FontWeight.w500,

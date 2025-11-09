@@ -185,7 +185,7 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                               return ListTile(
                                 title: Text(it.productName),
                                 subtitle: Text('${it.quantity} x ${it.price.toStringAsFixed(2)}'),
-                                trailing: Row(mainAxisSize: MainAxisSize.min, children: [Text('${it.subtotal.toStringAsFixed(2)}'), IconButton(onPressed: () => vm.removeItem(it.id), icon: const Icon(Icons.delete_outline))]),
+                                trailing: Row(mainAxisSize: MainAxisSize.min, children: [Text(it.subtotal.toStringAsFixed(2)), IconButton(onPressed: () => vm.removeItem(it.id), icon: const Icon(Icons.delete_outline))]),
                               );
                             },
                           );

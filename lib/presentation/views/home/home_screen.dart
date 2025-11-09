@@ -170,7 +170,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Expanded(
                     child: DashboardCard(
                     title: AppLocalizations.of(context)!.dashboardTotalSales,
-                    value: '₹${distributionVM.totalSales.toStringAsFixed(2)}',
+                    value: 'ريال${distributionVM.totalSales.toStringAsFixed(2)}',
                     icon: Icons.trending_up,
                     color: Colors.green,
                     onTap: () {
@@ -182,7 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Expanded(
                   child: DashboardCard(
                     title: AppLocalizations.of(context)!.dashboardOutstanding,
-                    value: '₹${customerVM.totalOutstanding.toStringAsFixed(2)}',
+                    value: 'ريال${customerVM.totalOutstanding.toStringAsFixed(2)}',
                     icon: Icons.account_balance_wallet,
                     color: Colors.orange,
                     onTap: () {
@@ -330,7 +330,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '₹${distribution.totalAmount.toStringAsFixed(2)}',
+                      'ريال${distribution.totalAmount.toStringAsFixed(2)}',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,

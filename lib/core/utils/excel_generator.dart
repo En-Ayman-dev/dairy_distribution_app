@@ -22,15 +22,15 @@ class ExcelGenerator {
         [TextCellValue('Metric'), TextCellValue('Value')]);
     sheet.appendRow([
       TextCellValue('Total Sales'),
-      TextCellValue('₹${stats['total_sales'].toStringAsFixed(2)}')
+      TextCellValue('ريال${stats['total_sales'].toStringAsFixed(2)}')
     ]);
     sheet.appendRow([
       TextCellValue('Total Paid'),
-      TextCellValue('₹${stats['total_paid'].toStringAsFixed(2)}')
+      TextCellValue('ريال${stats['total_paid'].toStringAsFixed(2)}')
     ]);
     sheet.appendRow([
       TextCellValue('Total Pending'),
-      TextCellValue('₹${stats['total_pending'].toStringAsFixed(2)}')
+      TextCellValue('ريال${stats['total_pending'].toStringAsFixed(2)}')
     ]);
     sheet.appendRow([
       TextCellValue('Total Distributions'),
@@ -38,7 +38,7 @@ class ExcelGenerator {
     ]);
     sheet.appendRow([
       TextCellValue('Average Sale'),
-      TextCellValue('₹${stats['average_sale'].toStringAsFixed(2)}')
+      TextCellValue('ريال${stats['average_sale'].toStringAsFixed(2)}')
     ]);
 
     return await _saveExcel(excel, 'sales_report');
@@ -65,7 +65,7 @@ class ExcelGenerator {
     ]);
     sheet.appendRow([
       TextCellValue('Total Value'),
-      TextCellValue('₹${reportData['total_value'].toStringAsFixed(2)}')
+      TextCellValue('ريال${reportData['total_value'].toStringAsFixed(2)}')
     ]);
     sheet.appendRow([
       TextCellValue('Low Stock Items'),
@@ -91,8 +91,8 @@ class ExcelGenerator {
         TextCellValue(product.category.toString().split('.').last),
         TextCellValue(product.stock.toString()),
         TextCellValue(product.unit),
-        TextCellValue('₹${product.price}'),
-        TextCellValue('₹${(product.stock * product.price).toStringAsFixed(2)}'),
+        TextCellValue('ريال${product.price}'),
+        TextCellValue('ريال${(product.stock * product.price).toStringAsFixed(2)}'),
       ]);
     }
 
@@ -125,15 +125,15 @@ class ExcelGenerator {
     sheet.appendRow([TextCellValue('Summary')]);
     sheet.appendRow([
       TextCellValue('Total Sales'),
-      TextCellValue('₹${reportData['total_sales'].toStringAsFixed(2)}')
+      TextCellValue('ريال${reportData['total_sales'].toStringAsFixed(2)}')
     ]);
     sheet.appendRow([
       TextCellValue('Total Paid'),
-      TextCellValue('₹${reportData['total_paid'].toStringAsFixed(2)}')
+      TextCellValue('ريال${reportData['total_paid'].toStringAsFixed(2)}')
     ]);
     sheet.appendRow([
       TextCellValue('Outstanding'),
-      TextCellValue('₹${reportData['outstanding'].toStringAsFixed(2)}')
+      TextCellValue('ريال${reportData['outstanding'].toStringAsFixed(2)}')
     ]);
     sheet.appendRow([]);
 
@@ -153,9 +153,9 @@ class ExcelGenerator {
       sheet.appendRow([
         TextCellValue(DateFormat('dd/MM/yyyy').format(dist.distributionDate)),
         TextCellValue(dist.items.length.toString()),
-        TextCellValue('₹${dist.totalAmount.toStringAsFixed(2)}'),
-        TextCellValue('₹${dist.paidAmount.toStringAsFixed(2)}'),
-        TextCellValue('₹${dist.pendingAmount.toStringAsFixed(2)}'),
+        TextCellValue('ريال${dist.totalAmount.toStringAsFixed(2)}'),
+        TextCellValue('ريال${dist.paidAmount.toStringAsFixed(2)}'),
+        TextCellValue('ريال${dist.pendingAmount.toStringAsFixed(2)}'),
         TextCellValue(dist.paymentStatus.toString().split('.').last),
       ]);
     }
@@ -179,7 +179,7 @@ class ExcelGenerator {
     // Summary
     sheet.appendRow([
       TextCellValue('Total Outstanding'),
-      TextCellValue('₹${reportData['total_outstanding'].toStringAsFixed(2)}')
+      TextCellValue('ريال${reportData['total_outstanding'].toStringAsFixed(2)}')
     ]);
     sheet.appendRow([
       TextCellValue('Customers with Balance'),
@@ -199,7 +199,7 @@ class ExcelGenerator {
       sheet.appendRow([
         TextCellValue(customer.name),
         TextCellValue(customer.phone),
-        TextCellValue('₹${customer.balance.toStringAsFixed(2)}'),
+        TextCellValue('ريال${customer.balance.toStringAsFixed(2)}'),
       ]);
     }
 

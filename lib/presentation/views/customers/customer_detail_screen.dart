@@ -126,7 +126,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '₹${widget.customer.balance.toStringAsFixed(2)}',
+                          'ريال${widget.customer.balance.toStringAsFixed(2)}',
                           style:
                               Theme.of(context).textTheme.headlineSmall?.copyWith(
                                     fontWeight: FontWeight.bold,
@@ -229,7 +229,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            '₹${distribution.totalAmount.toStringAsFixed(2)}',
+                            'ريال${distribution.totalAmount.toStringAsFixed(2)}',
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,

@@ -285,14 +285,14 @@ class _DistributionListScreenState extends State<DistributionListScreen> {
               return ListTile(
                 title: Text(dist.customerName),
                 subtitle: Text('${dist.distributionDate.day}/${dist.distributionDate.month}/${dist.distributionDate.year}'),
-                trailing: Text('₹${dist.totalAmount.toStringAsFixed(2)}'),
+                trailing: Text('ريال${dist.totalAmount.toStringAsFixed(2)}'),
                 onTap: () {
                   // For now just show details dialog
                   showDialog<void>(
                     context: context,
                     builder: (ctx) => AlertDialog(
                       title: Text('${AppLocalizations.of(context)!.distributionLabel} ${dist.id}'),
-                      content: Text('Customer: ${dist.customerName}\nTotal: ₹${dist.totalAmount}'),
+                      content: Text('Customer: ${dist.customerName}\nTotal: ريال${dist.totalAmount}'),
                       actions: [
                         TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(AppLocalizations.of(context)!.ok)),
                       ],

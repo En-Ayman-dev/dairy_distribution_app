@@ -196,7 +196,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    '₹${product.price}/${product.unit}',
+                    'ريال${product.price}/${product.unit}',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
@@ -372,7 +372,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('${AppLocalizations.of(context)!.categoryLabel}: ${_getCategoryName(product.category)}'),
-            Text('${AppLocalizations.of(context)!.priceLabel}: ₹${product.price}/${product.unit}'),
+            Text('${AppLocalizations.of(context)!.priceLabel}: ريال${product.price}/${product.unit}'),
             Text('${AppLocalizations.of(context)!.currentStockPrefix} ${product.stock} ${product.unit}'),
             Text('${AppLocalizations.of(context)!.minStockAlertLabel}: ${product.minStock} ${product.unit}'),
             if (product.isLowStock)

@@ -93,7 +93,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                       final d = pending[index];
                       return ListTile(
                         title: Text(d.customerName),
-                        subtitle: Text('${d.items.length} items • Pending: ₹${d.pendingAmount.toStringAsFixed(2)}'),
+                        subtitle: Text('${d.items.length} items • Pending: ريال${d.pendingAmount.toStringAsFixed(2)}'),
                         trailing: ElevatedButton(
                           onPressed: () => _showRecordPaymentDialog(d.id, d.pendingAmount),
                           child: Text(t.payLabel),
@@ -123,13 +123,13 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                       final pendingDists = distVm.distributions.where((d) => d.customerId == c.id && d.pendingAmount > 0).toList();
                       return ExpansionTile(
                         title: Text(c.name),
-                        subtitle: Text('Balance: ₹${c.balance.toStringAsFixed(2)}'),
+                        subtitle: Text('Balance: ريال${c.balance.toStringAsFixed(2)}'),
             children: pendingDists.isEmpty
               ? [Padding(padding: const EdgeInsets.all(12), child: Text(t.noPendingDistributionsForCustomer))]
                             : pendingDists.map((d) {
                                 return ListTile(
                                   title: Text('${d.distributionDate.day}/${d.distributionDate.month}/${d.distributionDate.year}'),
-                                  subtitle: Text('Pending: ₹${d.pendingAmount.toStringAsFixed(2)}'),
+                                  subtitle: Text('Pending: ريال${d.pendingAmount.toStringAsFixed(2)}'),
                                   trailing: ElevatedButton(onPressed: () => _showRecordPaymentDialog(d.id, d.pendingAmount), child: Text(t.payLabel)),
                                 );
                               }).toList(),
