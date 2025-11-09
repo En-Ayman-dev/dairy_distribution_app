@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "349431654241",
+    "project_id": "dairy-distribution-db",
+    "storage_bucket": "dairy-distribution-db.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:349431654241:android:178eb20ca1cdcc852d0720",
+        "android_client_info": {
+          "package_name": "com.example.dairy_distribution_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDj_sl_RH2iDb8YNDDWPCyqu-BwgNEMHVw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
