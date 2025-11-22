@@ -493,150 +493,60 @@ class _DistributionListScreenState extends State<DistributionListScreen> {
 
   Future<void> _showEditDialog(Distribution dist) async {
     final vm = context.read<DistributionViewModel>();
-    final t = AppLocalizations.of(context)!;
-    // Prepare controllers for items, paid and notes
-    final paidController = TextEditingController(text: dist.paidAmount.toStringAsFixed(2));
-    final notesController = TextEditingController(text: dist.notes ?? '');
-
-    final qtyControllers = dist.items.map((it) => TextEditingController(text: it.quantity.toString())).toList();
-    final priceControllers = dist.items.map((it) => TextEditingController(text: it.price.toStringAsFixed(2))).toList();
-
-    double computeTotal() {
-      double s = 0.0;
-      for (var i = 0; i < dist.items.length; i++) {
-        final q = double.tryParse(qtyControllers[i].text) ?? dist.items[i].quantity;
-        final p = double.tryParse(priceControllers[i].text) ?? dist.items[i].price;
-        s += q * p;
-      }
-      return s;
-    }
-
-    double currentTotal = computeTotal();
-
+    // Show a dedicated stateful dialog widget which owns its controllers
+    // and disposes them in its own State.dispose(). This prevents the
+    // "used after disposed" error that occurs when controllers are
+    // disposed after the dialog returns while the framework still tries
+    // to rebuild widgets using them.
     await showDialog<bool>(
       context: context,
-      builder: (ctx) => StatefulBuilder(builder: (ctx, setState) {
-        return AlertDialog(
-          title: Text('${t.distributionLabel} ${dist.id}'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('${t.customerDetailsTitle}: ${dist.customerName}'),
-                const SizedBox(height: 8),
-                // Items editing
-                ...List.generate(dist.items.length, (i) {
-                  final it = dist.items[i];
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(it.productName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: qtyControllers[i],
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              decoration: InputDecoration(labelText: '${t.quantityLabel}'),
-                              onChanged: (_) => setState(() => currentTotal = computeTotal()),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          SizedBox(
-                            width: 120,
-                            child: TextField(
-                              controller: priceControllers[i],
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              decoration: InputDecoration(labelText: t.priceLabel),
-                              onChanged: (_) => setState(() => currentTotal = computeTotal()),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                  );
-                }),
-
-                const Divider(),
-                Text('الإجمالي: ريال${currentTotal.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-
-                TextField(
-                  controller: paidController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(labelText: t.paid),
-                  onChanged: (_) => setState(() {}),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: notesController,
-                  keyboardType: TextInputType.text,
-                  maxLines: 3,
-                  decoration: InputDecoration(labelText: 'ملاحظات'),
-                ),
-                const SizedBox(height: 8),
-                Builder(builder: (__) {
-                  final newPaid = double.tryParse(paidController.text) ?? dist.paidAmount;
-                  final remaining = (currentTotal - newPaid).clamp(0, double.infinity);
-                  return Text('المتبقي: ريال${remaining.toStringAsFixed(2)}');
-                }),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(t.cancel)),
-            ElevatedButton(
-              onPressed: () async {
-                // Build updated items
-                final updatedItems = <DistributionItem>[];
-                for (var i = 0; i < dist.items.length; i++) {
-                  final it = dist.items[i];
-                  final q = double.tryParse(qtyControllers[i].text) ?? it.quantity;
-                  final p = double.tryParse(priceControllers[i].text) ?? it.price;
-                  updatedItems.add(it.copyWith(quantity: q, price: p, subtotal: q * p));
-                }
-
-                final newTotal = updatedItems.fold(0.0, (s, it) => s + it.subtotal);
-                final newPaid = double.tryParse(paidController.text) ?? dist.paidAmount;
-                final newNotes = notesController.text.trim();
-
-                PaymentStatus newStatus = PaymentStatus.pending;
-                if (newPaid >= newTotal) {
-                  newStatus = PaymentStatus.paid;
-                } else if (newPaid > 0) {
-                  newStatus = PaymentStatus.partial;
-                }
-
-                final updated = dist.copyWith(
-                  items: updatedItems,
-                  totalAmount: newTotal,
-                  paidAmount: newPaid,
-                  notes: newNotes.isEmpty ? null : newNotes,
-                  paymentStatus: newStatus,
-                  updatedAt: DateTime.now(),
-                );
-
-                Navigator.pop(ctx, true);
-
-                final ok = await vm.updateDistribution(updated);
-                if (!mounted) return;
-                if (ok) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${t.distributionLabel} ${dist.id} updated'), backgroundColor: Colors.green));
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(vm.errorMessage ?? t.errorOccurred), backgroundColor: Colors.red));
-                }
-              },
-              child: Text(t.confirm),
-            ),
-          ],
-        );
-      }),
+      builder: (ctx) => EditDistributionDialog(distribution: dist, viewModel: vm),
     );
+    return;
+  }
 
-    // dispose controllers
+}
+
+class EditDistributionDialog extends StatefulWidget {
+  final Distribution distribution;
+  final DistributionViewModel viewModel;
+
+  const EditDistributionDialog({Key? key, required this.distribution, required this.viewModel}) : super(key: key);
+
+  @override
+  State<EditDistributionDialog> createState() => _EditDistributionDialogState();
+}
+
+class _EditDistributionDialogState extends State<EditDistributionDialog> {
+  late final TextEditingController paidController;
+  late final TextEditingController notesController;
+  late final List<TextEditingController> qtyControllers;
+  late final List<TextEditingController> priceControllers;
+  late double currentTotal;
+
+  @override
+  void initState() {
+    super.initState();
+    final dist = widget.distribution;
+    paidController = TextEditingController(text: dist.paidAmount.toStringAsFixed(2));
+    notesController = TextEditingController(text: dist.notes ?? '');
+    qtyControllers = dist.items.map((it) => TextEditingController(text: it.quantity.toString())).toList();
+    priceControllers = dist.items.map((it) => TextEditingController(text: it.price.toStringAsFixed(2))).toList();
+    currentTotal = _computeTotal();
+  }
+
+  double _computeTotal() {
+    double s = 0.0;
+    for (var i = 0; i < widget.distribution.items.length; i++) {
+      final q = double.tryParse(qtyControllers[i].text) ?? widget.distribution.items[i].quantity;
+      final p = double.tryParse(priceControllers[i].text) ?? widget.distribution.items[i].price;
+      s += q * p;
+    }
+    return s;
+  }
+
+  @override
+  void dispose() {
     paidController.dispose();
     notesController.dispose();
     for (final c in qtyControllers) {
@@ -645,6 +555,130 @@ class _DistributionListScreenState extends State<DistributionListScreen> {
     for (final c in priceControllers) {
       c.dispose();
     }
-    return;
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+    final dist = widget.distribution;
+
+    return AlertDialog(
+      title: Text('${t.distributionLabel} ${dist.id}'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${t.customerDetailsTitle}: ${dist.customerName}'),
+            const SizedBox(height: 8),
+            // Items editing
+            ...List.generate(dist.items.length, (i) {
+              final it = dist.items[i];
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(it.productName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: qtyControllers[i],
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: InputDecoration(labelText: '${t.quantityLabel}'),
+                          onChanged: (_) => setState(() => currentTotal = _computeTotal()),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        width: 120,
+                        child: TextField(
+                          controller: priceControllers[i],
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: InputDecoration(labelText: t.priceLabel),
+                          onChanged: (_) => setState(() => currentTotal = _computeTotal()),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              );
+            }),
+
+            const Divider(),
+            Text('الإجمالي: ريال${currentTotal.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+
+            TextField(
+              controller: paidController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(labelText: t.paid),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: notesController,
+              keyboardType: TextInputType.text,
+              maxLines: 3,
+              decoration: InputDecoration(labelText: 'ملاحظات'),
+            ),
+            const SizedBox(height: 8),
+            Builder(builder: (__) {
+              final newPaid = double.tryParse(paidController.text) ?? dist.paidAmount;
+              final remaining = (currentTotal - newPaid).clamp(0, double.infinity);
+              return Text('المتبقي: ريال${remaining.toStringAsFixed(2)}');
+            }),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: Text(t.cancel)),
+        ElevatedButton(
+          onPressed: () async {
+            // Build updated items
+            final updatedItems = <DistributionItem>[];
+            for (var i = 0; i < dist.items.length; i++) {
+              final it = dist.items[i];
+              final q = double.tryParse(qtyControllers[i].text) ?? it.quantity;
+              final p = double.tryParse(priceControllers[i].text) ?? it.price;
+              updatedItems.add(it.copyWith(quantity: q, price: p, subtotal: q * p));
+            }
+
+            final newTotal = updatedItems.fold(0.0, (s, it) => s + it.subtotal);
+            final newPaid = double.tryParse(paidController.text) ?? dist.paidAmount;
+            final newNotes = notesController.text.trim();
+
+            PaymentStatus newStatus = PaymentStatus.pending;
+            if (newPaid >= newTotal) {
+              newStatus = PaymentStatus.paid;
+            } else if (newPaid > 0) {
+              newStatus = PaymentStatus.partial;
+            }
+
+            final updated = dist.copyWith(
+              items: updatedItems,
+              totalAmount: newTotal,
+              paidAmount: newPaid,
+              notes: newNotes.isEmpty ? null : newNotes,
+              paymentStatus: newStatus,
+              updatedAt: DateTime.now(),
+            );
+
+            Navigator.pop(context, true);
+
+            final ok = await widget.viewModel.updateDistribution(updated);
+            if (!mounted) return;
+            if (ok) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${t.distributionLabel} ${dist.id} updated'), backgroundColor: Colors.green));
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(widget.viewModel.errorMessage ?? t.errorOccurred), backgroundColor: Colors.red));
+            }
+          },
+          child: Text(t.confirm),
+        ),
+      ],
+    );
   }
 }
