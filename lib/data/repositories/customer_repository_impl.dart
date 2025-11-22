@@ -199,14 +199,32 @@ class CustomerRepositoryImpl implements CustomerRepository {
     double balance,
   ) async {
     try {
+      final prev = await localDataSource.getCustomerById(id);
+      developer.log('Updating customer balance local: id=$id prev=${prev?.balance ?? 'null'} new=$balance', name: 'CustomerRepository');
       await localDataSource.updateCustomerBalance(id, balance);
 
+      // Queue sync for the customer change
+      final customer = await localDataSource.getCustomerById(id);
+      if (customer != null) {
+        developer.log('Queueing customer update for sync: id=${customer.id} balance=${customer.balance}', name: 'CustomerRepository');
+        await syncManager.queueSync(
+          entityType: 'customer',
+          entityId: customer.id,
+          operation: 'update',
+          data: CustomerModel.fromEntity(customer).toJson(),
+        );
+      }
+
       if (await networkInfo.isConnected) {
-        final customer = await localDataSource.getCustomerById(id);
-        if (customer != null) {
-          if (_isAuthenticated) {
+        try {
+          if (_isAuthenticated && customer != null) {
+            developer.log('Attempting remote customer update for ${customer.id}', name: 'CustomerRepository');
             await remoteDataSource.updateCustomer(_userId, customer);
+            developer.log('Remote customer update succeeded for ${customer.id}', name: 'CustomerRepository');
+            await syncManager.markAsSynced('customer', customer.id);
           }
+        } catch (e) {
+          developer.log('Remote customer update failed, will sync later: $e', name: 'CustomerRepository');
         }
       }
 

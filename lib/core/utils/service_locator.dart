@@ -101,7 +101,7 @@ Future<void> setupServiceLocator() async {
 
   // ViewModels
   getIt.registerFactory(() => AuthViewModel(getIt()));
-  getIt.registerFactory(() => CustomerViewModel(getIt(), getIt()));
+  getIt.registerFactory(() => CustomerViewModel(getIt(), getIt(), getIt<DistributionRepository>()));
   getIt.registerFactory(() => ProductViewModel(getIt(), getIt()));
   getIt.registerFactory(() => DistributionViewModel(getIt(), getIt()));
   getIt.registerFactory(() => ReportViewModel(

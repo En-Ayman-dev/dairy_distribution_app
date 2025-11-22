@@ -54,6 +54,7 @@ class SettingsPage extends ConsumerWidget {
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: () async {
+                await DatabaseHelper.instance.deleteDb();
                 final messenger = ScaffoldMessenger.of(context);
                 final uid = FirebaseAuth.instance.currentUser?.uid;
                 if (uid == null) {

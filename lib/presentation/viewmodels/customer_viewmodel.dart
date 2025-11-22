@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../../domain/entities/customer.dart';
 import '../../domain/repositories/customer_repository.dart';
+import '../../domain/repositories/distribution_repository.dart';
 import '../../domain/usecases/customer/add_customer.dart';
 import 'package:uuid/uuid.dart';
 
@@ -13,9 +14,10 @@ enum CustomerViewState {
 
 class CustomerViewModel extends ChangeNotifier {
   final CustomerRepository _repository;
+  final DistributionRepository _distributionRepository;
   final Uuid _uuid;
 
-  CustomerViewModel(this._repository, this._uuid);
+  CustomerViewModel(this._repository, this._uuid, this._distributionRepository);
 
   CustomerViewState _state = CustomerViewState.initial;
   List<Customer> _customers = [];
@@ -200,10 +202,13 @@ class CustomerViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Record a payment for a customer by reducing their balance.
-  // Returns true on success.
-  Future<bool> recordPayment(String customerId, double amount) async {
-    // Find current customer to compute new balance
+  /// Records a payment for a customer.
+  /// If [distributionId] is provided, the payment is applied to that distribution
+  /// (so distribution pending and customer balance are updated atomically by
+  /// the Distribution repository). Otherwise the payment updates only the
+  /// customer's balance.
+  Future<bool> recordPayment(String customerId, double amount, {String? distributionId}) async {
+    // Basic validation
     final index = _customers.indexWhere((c) => c.id == customerId);
     if (index == -1) {
       _errorMessage = 'Customer not found';
@@ -211,19 +216,41 @@ class CustomerViewModel extends ChangeNotifier {
       return false;
     }
 
-    final current = _customers[index];
-    final newBalance = (current.balance - amount).clamp(0.0, double.infinity);
+    try {
+      if (distributionId != null) {
+        // Delegate to distribution repository which already updates both
+        // distribution and customer local DB and queues sync.
+        final result = await _distributionRepository.recordPayment(distributionId, amount);
+        return result.fold((failure) {
+          _errorMessage = failure.message;
+          notifyListeners();
+          return false;
+        }, (_) {
+          // Reload customers and distributions to reflect change
+          loadCustomers();
+          return true;
+        });
+      } else {
+        // Update customer balance directly
+        final current = _customers[index];
+        final newBalance = (current.balance - amount).clamp(0.0, double.infinity);
 
-    final result = await _repository.updateCustomerBalance(customerId, newBalance);
+        final result = await _repository.updateCustomerBalance(customerId, newBalance);
 
-    return result.fold((failure) {
-      _errorMessage = failure.message;
+        return result.fold((failure) {
+          _errorMessage = failure.message;
+          notifyListeners();
+          return false;
+        }, (_) {
+          // Reload customers to reflect updated balance
+          loadCustomers();
+          return true;
+        });
+      }
+    } catch (e) {
+      _errorMessage = e.toString();
       notifyListeners();
       return false;
-    }, (_) {
-      // Reload customers to reflect updated balance
-      loadCustomers();
-      return true;
-    });
+    }
   }
 }

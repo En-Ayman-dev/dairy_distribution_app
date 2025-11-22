@@ -1,3 +1,6 @@
+// ignore_for_file: unused_element
+
+import 'package:dairy_distribution_app/presentation/views/payments/payments_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../domain/entities/customer.dart';
@@ -21,9 +24,9 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context
-          .read<DistributionViewModel>()
-          .loadDistributionsByCustomer(widget.customer.id);
+      context.read<DistributionViewModel>().loadDistributionsByCustomer(
+        widget.customer.id,
+      );
     });
   }
 
@@ -75,9 +78,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                           children: [
                             Text(
                               widget.customer.name,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .headlineSmall
+                              style: Theme.of(context).textTheme.headlineSmall
                                   ?.copyWith(fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 4),
@@ -88,65 +89,31 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                     ],
                   ),
                   const Divider(height: 32),
-                  _buildInfoRow(Icons.phone, AppLocalizations.of(context)!.phoneLabel, widget.customer.phone),
+                  _buildInfoRow(
+                    Icons.phone,
+                    AppLocalizations.of(context)!.phoneLabel,
+                    widget.customer.phone,
+                  ),
                   if (widget.customer.email != null) ...[
                     const SizedBox(height: 12),
                     _buildInfoRow(
-                        Icons.email, AppLocalizations.of(context)!.emailLabel, widget.customer.email!),
+                      Icons.email,
+                      AppLocalizations.of(context)!.emailLabel,
+                      widget.customer.email!,
+                    ),
                   ],
                   if (widget.customer.address != null) ...[
                     const SizedBox(height: 12),
                     _buildInfoRow(
-                        Icons.location_on, AppLocalizations.of(context)!.addressLabel, widget.customer.address!),
+                      Icons.location_on,
+                      AppLocalizations.of(context)!.addressLabel,
+                      widget.customer.address!,
+                    ),
                   ],
                 ],
               ),
             ),
           ),
-
-          // Balance Card
-          if (widget.customer.balance > 0)
-            Card(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              color: Colors.orange.shade50,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          AppLocalizations.of(context)!.outstandingBalanceLabel,
-                          style:
-                              Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    color: Colors.orange.shade900,
-                                  ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'ريال${widget.customer.balance.toStringAsFixed(2)}',
-                          style:
-                              Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.orange.shade900,
-                                  ),
-                        ),
-                      ],
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: () => _showCustomerPaymentDialog(context, widget.customer),
-                      icon: const Icon(Icons.payment),
-                      label: Text(AppLocalizations.of(context)!.payLabel),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
 
           // Distribution History
           Padding(
@@ -156,9 +123,9 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
               children: [
                 Text(
                   AppLocalizations.of(context)!.distributionHistoryLabel,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 TextButton(
                   onPressed: () {
@@ -185,7 +152,9 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                 return Padding(
                   padding: const EdgeInsets.all(32.0),
                   child: Center(
-                    child: Text(AppLocalizations.of(context)!.noDistributionHistory),
+                    child: Text(
+                      AppLocalizations.of(context)!.noDistributionHistory,
+                    ),
                   ),
                 );
               }
@@ -197,8 +166,10 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                 itemBuilder: (context, index) {
                   final distribution = viewModel.distributions[index];
                   return Card(
-                    margin:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 4,
+                    ),
                     child: ListTile(
                       leading: Icon(
                         Icons.local_shipping,
@@ -252,10 +223,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
             children: [
               Text(
                 label,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
               ),
               Text(
                 value,
@@ -379,60 +347,12 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
   }
 
   void _showCustomerPaymentDialog(BuildContext context, Customer customer) {
-    final controller = TextEditingController(text: customer.balance.toStringAsFixed(2));
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.payLabel),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('${AppLocalizations.of(context)!.outstandingBalanceLabel}: ريال${customer.balance.toStringAsFixed(2)}'),
-            const SizedBox(height: 12),
-            TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                labelText: 'Amount',
-                helperText: 'Enter paid amount',
-              ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text(AppLocalizations.of(context)!.cancel),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final amount = double.tryParse(controller.text) ?? 0.0;
-              if (amount <= 0) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Enter a valid amount')),
-                );
-                return;
-              }
-
-              final vm = context.read<CustomerViewModel>();
-              final success = await vm.recordPayment(customer.id, amount);
-
-              if (!mounted) return;
-
-              Navigator.pop(dialogContext);
-
-              final messenger = ScaffoldMessenger.of(context);
-              if (success) {
-                messenger.showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.paymentRecorded)));
-              } else {
-                messenger.showSnackBar(SnackBar(content: Text(vm.errorMessage ?? AppLocalizations.of(context)!.errorOccurred)));
-              }
-            },
-            child: Text(AppLocalizations.of(context)!.payLabel),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-          ),
-        ],
+    // Navigate to the reusable payment page so all payment flows use
+    // the same UI and logic in `CustomerPaymentPage`.
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CustomerPaymentPage(customer: customer),
       ),
     );
   }

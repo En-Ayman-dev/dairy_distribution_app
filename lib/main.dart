@@ -126,7 +126,15 @@ class MyApp extends riverpod.ConsumerWidget {
                 builder: (_) => const DistributionListScreen(),
               );
             case AppRoutes.payments:
-              return MaterialPageRoute(builder: (_) => const PaymentsScreen());
+              final arg = settings.arguments;
+              if (arg is Customer) {
+                return MaterialPageRoute(builder: (_) => CustomerPaymentPage(customer: arg));
+              }
+
+              // No customer was provided. Fall back to the customers list
+              // so the user can select who to take a payment from. This
+              // prevents a runtime cast error when `arguments` is null.
+              return MaterialPageRoute(builder: (_) => const CustomerListScreen());
             case AppRoutes.distributionDetail:
               final distribution = settings.arguments as dynamic;
               // callers should pass a Distribution instance as the arguments

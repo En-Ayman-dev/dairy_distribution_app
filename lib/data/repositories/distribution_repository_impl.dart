@@ -57,7 +57,13 @@ class DistributionRepositoryImpl implements DistributionRepository {
           }
 
           for (var distribution in remoteDistributions) {
-            await localDataSource.insertDistribution(distribution);
+            // Prevent overwriting newer local changes with older remote data.
+            final localDist = await localDataSource.getDistributionById(distribution.id);
+            if (localDist == null || distribution.updatedAt.isAfter(localDist.updatedAt)) {
+              await localDataSource.insertDistribution(distribution);
+            } else {
+              developer.log('Skipping remote distribution ${distribution.id} because local is newer', name: 'DistributionRepository');
+            }
           }
           return Right(remoteDistributions);
         } catch (e) {
@@ -302,15 +308,16 @@ class DistributionRepositoryImpl implements DistributionRepository {
       if (distribution == null) {
         return Left(NotFoundFailure('Distribution not found'));
       }
-
       final newPaidAmount = distribution.paidAmount + amount;
       String paymentStatus = 'pending';
-      
+
       if (newPaidAmount >= distribution.totalAmount) {
         paymentStatus = 'paid';
       } else if (newPaidAmount > 0) {
         paymentStatus = 'partial';
       }
+
+      developer.log('Recording payment: dist=${distribution.id} previousPaid=${distribution.paidAmount} amount=$amount newPaid=$newPaidAmount total=${distribution.totalAmount} status=$paymentStatus', name: 'DistributionRepository');
 
       await localDataSource.updatePaymentStatus(
         distributionId,
@@ -318,39 +325,58 @@ class DistributionRepositoryImpl implements DistributionRepository {
         paymentStatus,
       );
 
+      developer.log('Updated local distribution payment status for ${distribution.id}', name: 'DistributionRepository');
+
       final customer =
           await customerLocalDataSource.getCustomerById(distribution.customerId);
       if (customer != null) {
+        developer.log('Updating customer balance: customer=${customer.id} previousBalance=${customer.balance} deduct=$amount', name: 'DistributionRepository');
         await customerLocalDataSource.updateCustomerBalance(
           distribution.customerId,
           customer.balance - amount,
         );
+        developer.log('Customer balance updated locally: customer=${customer.id}', name: 'DistributionRepository');
       }
 
       // --- 3. الإضافة الجديدة (إصلاح الخلل): مزامنة العميل ---
       final updatedCustomer =
           await customerLocalDataSource.getCustomerById(distribution.customerId);
-      
       if (updatedCustomer != null) {
+        final customerData = CustomerModel.fromEntity(updatedCustomer).toJson();
+        developer.log('Queueing customer sync for ${updatedCustomer.id} after payment', name: 'DistributionRepository');
         await syncManager.queueSync(
           entityType: 'customer',
           entityId: updatedCustomer.id,
           operation: 'update',
-          data: CustomerModel.fromEntity(updatedCustomer).toJson(),
+          data: customerData,
         );
       }
       // --- نهاية الإضافة ---
 
+      // Queue the distribution update for sync (so SyncManager knows about it)
+      final updatedDistribution = await localDataSource.getDistributionById(distributionId);
+      if (updatedDistribution != null) {
+        final distData = DistributionModel.fromEntity(updatedDistribution).toJson();
+        developer.log('Queueing distribution sync for ${updatedDistribution.id} after payment newPaid=${updatedDistribution.paidAmount} pending=${updatedDistribution.pendingAmount}', name: 'DistributionRepository');
+        await syncManager.queueSync(
+          entityType: 'distribution',
+          entityId: updatedDistribution.id,
+          operation: 'update',
+          data: distData,
+        );
+      }
+
       if (await networkInfo.isConnected) {
         try {
-          final updatedDistribution =
-              await localDataSource.getDistributionById(distributionId);
           if (updatedDistribution != null) {
             if (_isAuthenticated) {
+              developer.log('Attempting remote update for distribution ${updatedDistribution.id}', name: 'DistributionRepository');
               await remoteDataSource.updateDistribution(
                 _userId,
                 DistributionModel.fromEntity(updatedDistribution),
               );
+              developer.log('Remote update succeeded for distribution ${updatedDistribution.id}', name: 'DistributionRepository');
+              await syncManager.markAsSynced('distribution', updatedDistribution.id);
             }
           }
         } catch (e) {

@@ -25,19 +25,20 @@ class SyncManager {
   }) async {
     try {
       final db = await databaseHelper.database;
-      await db.insert(
+      final createdAt = DateTime.now().toIso8601String();
+      final rowId = await db.insert(
         DatabaseConstants.syncQueueTable,
         {
           DatabaseConstants.columnEntityType: entityType,
           DatabaseConstants.columnEntityId: entityId,
           DatabaseConstants.columnOperation: operation,
           DatabaseConstants.columnData: jsonEncode(data),
-          DatabaseConstants.columnCreatedAt: DateTime.now().toIso8601String(),
+          DatabaseConstants.columnCreatedAt: createdAt,
           DatabaseConstants.columnSyncStatus: 0, // 0 = pending
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
-      logger.i('Queued sync: $entityType - $operation - $entityId');
+      logger.i('Queued sync: id=$rowId $entityType - $operation - $entityId createdAt=$createdAt data=${jsonEncode(data)}');
     } catch (e) {
       logger.e('Failed to queue sync: $e');
     }
@@ -63,7 +64,7 @@ class SyncManager {
   Future<void> markAsSynced(String entityType, String entityId) async {
     try {
       final db = await databaseHelper.database;
-      await db.update(
+      final count = await db.update(
         DatabaseConstants.syncQueueTable,
         {DatabaseConstants.columnSyncStatus: 1}, // 1 = synced
         where: '''
@@ -72,7 +73,7 @@ class SyncManager {
         ''',
         whereArgs: [entityType, entityId],
       );
-      logger.i('Marked as synced: $entityType - $entityId');
+      logger.i('Marked as synced: $entityType - $entityId (rowsUpdated=$count)');
     } catch (e) {
       logger.e('Failed to mark as synced: $e');
     }
@@ -84,12 +85,12 @@ class SyncManager {
       logger.w('No internet connection. Cannot sync.');
       return;
     }
-
     final pendingOps = await getPendingSyncOperations();
     logger.i('Found ${pendingOps.length} pending sync operations');
 
     for (var op in pendingOps) {
       try {
+        logger.d('Processing pending op: ${op[DatabaseConstants.columnEntityType]} - ${op[DatabaseConstants.columnOperation]} - ${op[DatabaseConstants.columnEntityId]} id=${op[DatabaseConstants.columnId]} createdAt=${op[DatabaseConstants.columnCreatedAt]}');
         await _syncOperation(op);
       } catch (e) {
         logger.e('Failed to sync operation: $e');
@@ -101,11 +102,21 @@ class SyncManager {
     final entityType = op[DatabaseConstants.columnEntityType] as String;
     final entityId = op[DatabaseConstants.columnEntityId] as String;
     final operation = op[DatabaseConstants.columnOperation] as String;
+    final dataJson = op[DatabaseConstants.columnData] as String?;
+    Map<String, dynamic>? data;
+    try {
+      data = dataJson != null ? jsonDecode(dataJson) as Map<String, dynamic> : null;
+    } catch (e) {
+      logger.w('Failed to decode sync data for $entityType:$entityId - $e');
+      data = null;
+    }
 
-    logger.i('Syncing: $entityType - $operation - $entityId');
+    logger.i('Syncing: $entityType - $operation - $entityId data=${data != null ? jsonEncode(data) : 'null'}');
 
-    // This will be handled by repositories
-    // Just mark as synced for now
+    // Note: The actual remote sync should be implemented by repositories
+    // when they detect network connectivity. Here we just mark it as synced
+    // to avoid infinite retries in the demo flow once the app-level code
+    // has already attempted remote calls.
     await markAsSynced(entityType, entityId);
   }
 

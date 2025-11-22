@@ -1,145 +1,137 @@
+
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../viewmodels/distribution_viewmodel.dart';
+
+import '../../../domain/entities/customer.dart';
 import '../../viewmodels/customer_viewmodel.dart';
+import '../../viewmodels/distribution_viewmodel.dart';
 import '../../../l10n/app_localizations.dart';
 
-class PaymentsScreen extends StatefulWidget {
-  const PaymentsScreen({super.key});
+/// A standalone page for handling customer payments.
+///
+/// This page displays the customer's outstanding balance, allows the user
+/// to enter a paid amount, and records the payment via the CustomerViewModel.
+/// It can be reused throughout the project wherever customer payments are needed.
+class CustomerPaymentPage extends StatefulWidget {
+  final Customer customer;
+  final String? distributionId; // optional: when paying a specific distribution
+
+  const CustomerPaymentPage({super.key, required this.customer, this.distributionId});
 
   @override
-  State<PaymentsScreen> createState() => _PaymentsScreenState();
+  State<CustomerPaymentPage> createState() => _CustomerPaymentPageState();
 }
 
-class _PaymentsScreenState extends State<PaymentsScreen> {
+class _CustomerPaymentPageState extends State<CustomerPaymentPage> {
+  late final TextEditingController _controller;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<DistributionViewModel>().loadDistributions();
-      context.read<CustomerViewModel>().loadCustomers();
-    });
+    // Pre-fill the controller with the customer's outstanding balance.
+    _controller = TextEditingController(
+      text: widget.customer.balance.toStringAsFixed(2),
+    );
   }
 
-  Future<void> _showRecordPaymentDialog(String distributionId, double pending) async {
-    final t = AppLocalizations.of(context)!;
-    final controller = TextEditingController(text: pending.toStringAsFixed(2));
-    final vm = context.read<DistributionViewModel>();
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(t.quickPayments),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.numberWithOptions(decimal: true),
-          decoration: InputDecoration(labelText: t.paid),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(t.cancel)),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(t.payLabel),
-          ),
-        ],
-      ),
-    );
+  /// Records the payment using the injected CustomerViewModel and refreshes
+  /// related data on success.
+  Future<void> _recordPayment() async {
+    final amount = double.tryParse(_controller.text) ?? 0.0;
+    if (amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a valid amount')),
+      );
+      return;
+    }
 
-    if (ok == true) {
-      final amount = double.tryParse(controller.text) ?? 0.0;
-      if (amount <= 0) return;
-      // Capture messenger and avoid using BuildContext across async gaps.
-      final messenger = ScaffoldMessenger.of(context);
-      final success = await vm.recordPayment(distributionId, amount);
-      if (!mounted) return;
-      if (success) {
-        messenger.showSnackBar(SnackBar(content: Text(t.paymentRecorded)));
-      } else {
-        messenger.showSnackBar(SnackBar(content: Text(vm.errorMessage ?? t.errorOccurred)));
+    final customerVm = context.read<CustomerViewModel>();
+    final success = await customerVm.recordPayment(widget.customer.id, amount, distributionId: widget.distributionId);
+
+    if (!mounted) return;
+
+    if (success) {
+      // Refresh the distributions and customers to reflect the new balance.
+      final distVm = context.read<DistributionViewModel>();
+      await distVm.loadDistributionsByCustomer(widget.customer.id);
+      await context.read<CustomerViewModel>().loadCustomers();
+
+      // If this payment was for a specific distribution, fetch it so
+      // callers (like DistributionDetailScreen) can read updated data.
+      if (widget.distributionId != null) {
+        await distVm.getDistributionById(widget.distributionId!);
       }
+
+      Navigator.pop(context, true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context)!.paymentRecorded,
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            customerVm.errorMessage ??
+                AppLocalizations.of(context)!.errorOccurred,
+          ),
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context)!;
-
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: Text(t.quickPayments)),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await context.read<DistributionViewModel>().loadDistributions();
-          await context.read<CustomerViewModel>().loadCustomers();
-        },
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(t.pendingDistributionsTitle, style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 8),
-              Consumer<DistributionViewModel>(
-                builder: (context, vm, _) {
-                  final pending = vm.distributions.where((d) => d.pendingAmount > 0).toList();
-                  if (vm.state == DistributionViewState.loading) return const Center(child: CircularProgressIndicator());
-                  if (pending.isEmpty) return Padding(padding: const EdgeInsets.all(8.0), child: Text(t.noPendingDistributions));
-
-                  return ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: pending.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final d = pending[index];
-                      return ListTile(
-                        title: Text(d.customerName),
-                        subtitle: Text('${d.items.length} items • Pending: ريال${d.pendingAmount.toStringAsFixed(2)}'),
-                        trailing: ElevatedButton(
-                          onPressed: () => _showRecordPaymentDialog(d.id, d.pendingAmount),
-                          child: Text(t.payLabel),
-                        ),
-                      );
-                    },
-                  );
-                },
+      appBar: AppBar(
+        title: Text(l10n.payLabel),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Display outstanding balance.
+            Text(
+              '${l10n.outstandingBalanceLabel}: ريال${widget.customer.balance.toStringAsFixed(2)}',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            // Input field for the amount paid.
+            TextField(
+              controller: _controller,
+              decoration: const InputDecoration(
+                labelText: 'Amount',
+                helperText: 'Enter paid amount',
               ),
-
-              const SizedBox(height: 24),
-              Text(t.outstandingReportSubtitle, style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 8),
-              Consumer2<CustomerViewModel, DistributionViewModel>(
-                builder: (context, custVm, distVm, _) {
-                  final customers = custVm.customers.where((c) => c.balance > 0).toList();
-                  if (customers.isEmpty) return Padding(padding: const EdgeInsets.all(8.0), child: Text(t.noCustomersWithOutstanding));
-
-                  return ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: customers.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
-                    itemBuilder: (context, idx) {
-                      final c = customers[idx];
-                      // Find pending distributions for this customer
-                      final pendingDists = distVm.distributions.where((d) => d.customerId == c.id && d.pendingAmount > 0).toList();
-                      return ExpansionTile(
-                        title: Text(c.name),
-                        subtitle: Text('Balance: ريال${c.balance.toStringAsFixed(2)}'),
-            children: pendingDists.isEmpty
-              ? [Padding(padding: const EdgeInsets.all(12), child: Text(t.noPendingDistributionsForCustomer))]
-                            : pendingDists.map((d) {
-                                return ListTile(
-                                  title: Text('${d.distributionDate.day}/${d.distributionDate.month}/${d.distributionDate.year}'),
-                                  subtitle: Text('Pending: ريال${d.pendingAmount.toStringAsFixed(2)}'),
-                                  trailing: ElevatedButton(onPressed: () => _showRecordPaymentDialog(d.id, d.pendingAmount), child: Text(t.payLabel)),
-                                );
-                              }).toList(),
-                      );
-                    },
-                  );
-                },
-              ),
-            ],
-          ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            ),
+            const SizedBox(height: 24),
+            // Button to submit the payment.
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _recordPayment,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                    ),
+                    child: Text(l10n.payLabel),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
