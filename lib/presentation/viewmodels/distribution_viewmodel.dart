@@ -22,6 +22,7 @@ class DistributionViewModel extends ChangeNotifier {
   List<Distribution> _distributions = [];
   List<Distribution> _filteredDistributions = [];
   Distribution? _selectedDistribution;
+  String? _lastCreatedDistributionId;
   String? _errorMessage;
   // Date range fields removed (previously unused).
   PaymentStatus? _filterPaymentStatus;
@@ -38,6 +39,7 @@ class DistributionViewModel extends ChangeNotifier {
   List<DistributionItem> get currentItems => _currentItems;
   double get currentPaidAmount => _currentPaidAmount;
   bool get hasError => _errorMessage != null;
+  String? get lastCreatedDistributionId => _lastCreatedDistributionId;
 
   // Statistics
   double get totalSales =>
@@ -139,8 +141,15 @@ class DistributionViewModel extends ChangeNotifier {
         return false;
       },
       (distributionId) {
-        clearCurrentDistribution();
-        loadDistributions();
+        _lastCreatedDistributionId = distributionId;
+        // Ensure the saved distribution is loaded into _selectedDistribution
+        // before clearing the in-memory current items so printing can use it.
+        () async {
+          await getDistributionById(distributionId);
+          clearCurrentDistribution();
+          await loadDistributions();
+          notifyListeners();
+        }();
         return true;
       },
     );
@@ -309,6 +318,12 @@ class DistributionViewModel extends ChangeNotifier {
 
   void clearSelectedDistribution() {
     _selectedDistribution = null;
+    notifyListeners();
+  }
+
+  // Clear the last created distribution id (used to control print visibility)
+  void clearLastCreatedDistributionId() {
+    _lastCreatedDistributionId = null;
     notifyListeners();
   }
 }

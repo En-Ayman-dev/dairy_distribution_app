@@ -1,5 +1,9 @@
 
 import 'package:flutter/material.dart';
+import '../../widgets/print_button.dart';
+import '../../../core/utils/pdf_generator.dart';
+import 'package:open_file/open_file.dart';
+import 'dart:developer' as developer;
 import 'package:provider/provider.dart';
 import '../../viewmodels/distribution_viewmodel.dart';
 import '../../../data/datasources/local/customer_local_datasource.dart';
@@ -31,6 +35,12 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
   void initState() {
     super.initState();
     _loadLookups();
+    // Ensure print button is hidden when the screen is first opened
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        context.read<DistributionViewModel>().clearLastCreatedDistributionId();
+      } catch (_) {}
+    });
   }
 
   Future<void> _loadLookups() async {
@@ -102,8 +112,14 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
 
     if (!mounted) return;
     if (ok) {
+      // Show success and keep the screen so user can print before exiting.
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.createTestDistributionSuccess)));
-      Navigator.of(context).pop();
+      // Load the saved distribution details so printing can use that data
+      final lastId = vm.lastCreatedDistributionId;
+      if (lastId != null) {
+        await vm.getDistributionById(lastId);
+      }
+      // Do NOT pop here. PrintButton becomes visible because ViewModel stores lastCreatedDistributionId.
     } else {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(vm.errorMessage ?? AppLocalizations.of(context)!.errorOccurred)));
     }
@@ -198,19 +214,28 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                     const SizedBox(height: 8),
                     TextField(controller: _paidController, keyboardType: TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: t.paid)),
                     const SizedBox(height: 16),
-                    // زر طباعة الفاتورة
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.print),
-                        label: const Text('طباعة الفاتورة'),
-                        onPressed: _showPrintDialog,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.blue,
-                          side: const BorderSide(color: Colors.blue),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                      ),
+                    // Print button is shown only after successful save
+                    Consumer<DistributionViewModel>(
+                      builder: (c, vm, _) {
+                        final canPrint = vm.lastCreatedDistributionId != null;
+                        if (!canPrint) return const SizedBox.shrink();
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            PrintButton(
+                              onPrint: (printerSize, output, preview) async {
+                                await _printInvoice(printerSize, output, preview);
+                              },
+                              defaultSize: kPrinterSizes.first,
+                            ),
+                            const SizedBox(height: 8),
+                            ElevatedButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: Text(AppLocalizations.of(context)!.close),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                     const SizedBox(height: 12),
                     SizedBox(width: double.infinity, child: _creating ? const Center(child: CircularProgressIndicator()) : ElevatedButton(onPressed: _submit, child: Text(t.createDistributionLabel))),
@@ -221,59 +246,77 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
     );
     
   }
-  void _showPrintDialog() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        String selectedSize = '58mm';
-        return StatefulBuilder(
-          builder: (context, setState) => AlertDialog(
-            title: const Text('اختيار مقاس الطابعة'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                RadioListTile<String>(
-                  value: '58mm',
-                  groupValue: selectedSize,
-                  onChanged: (v) => setState(() => selectedSize = v!),
-                  title: const Text('58mm (عرض فعلي ~48mm) - مناسب للفواتير الصغيرة'),
-                ),
-                RadioListTile<String>(
-                  value: '80mm',
-                  groupValue: selectedSize,
-                  onChanged: (v) => setState(() => selectedSize = v!),
-                  title: const Text('80mm (عرض فعلي ~72mm) - مناسب للسوبرماركت/المطاعم الكبيرة'),
-                ),
-                // يمكن إضافة مقاسات أخرى لاحقًا
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('إلغاء'),
-              ),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.print),
-                label: const Text('طباعة'),
-                onPressed: () {
-                  Navigator.pop(context);
-                  _printInvoice(selectedSize);
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+  Future<void> _printInvoice(PrinterSize size, PrintOutput output, bool preview) async {
+    final vm = context.read<DistributionViewModel>();
+    final customer = _customers.firstWhere((c) => c.id == _selectedCustomerId);
 
-  void _printInvoice(String size) {
-    // هنا منطق الطباعة الفعلي (حسب المقاس)
-    // حالياً فقط رسالة توضيحية
+    // If we don't have the saved distribution loaded yet, but there is a last-created id,
+    // load it so we always print the saved invoice.
+    if (vm.selectedDistribution == null && vm.lastCreatedDistributionId != null) {
+      await vm.getDistributionById(vm.lastCreatedDistributionId!);
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('سيتم طباعة الفاتورة بمقاس $size')),
+      SnackBar(content: Text(output == PrintOutput.pdf
+          ? 'سيتم إنشاء ملف PDF للمسح/الطباعة بمقاس ${size.name}'
+          : 'سيتم طباعة الفاتورة بمقاس ${size.name} (عرض فعلي ${size.printableWidthMm}mm)')),
     );
-    // يمكن لاحقاً ربطها بمكتبة طباعة فعلية
+
+    if (output == PrintOutput.pdf) {
+      // توليد ملف PDF
+      final pdfGen = PDFGenerator();
+      // Use the saved distribution (if loaded) to print the exact saved invoice.
+      final distribution = vm.selectedDistribution;
+      final items = distribution?.items ?? vm.currentItems;
+      final total = distribution?.totalAmount ?? vm.getCurrentTotal();
+      final paid = distribution?.paidAmount ?? vm.currentPaidAmount;
+      final previousBalance = customer.balance;
+
+      try {
+        developer.log('Attempting to generate distribution PDF', name: 'AddDistributionScreen');
+        final path = await pdfGen.generateDistributionInvoice(
+          customer: customer,
+          items: items,
+          total: total,
+          paid: paid,
+          previousBalance: previousBalance,
+          dateTime: DateTime.now(),
+          createdBy: 'المستخدم',
+          printerSize: size,
+          notes: null,
+        );
+
+        developer.log('PDF generated at: $path', name: 'AddDistributionScreen');
+
+        if (!mounted) return;
+
+        // Show a SnackBar with an action to open the file. This avoids pushing
+        // another Navigator route and prevents accidentally popping the current
+        // screen.
+        final snack = SnackBar(
+          content: Text('تم إنشاء PDF: ${path.split(RegExp(r"[\\/]")).last}'),
+          action: SnackBarAction(
+            label: 'فتح',
+            onPressed: () => OpenFile.open(path),
+          ),
+          duration: const Duration(seconds: 6),
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(snack);
+
+        if (preview) {
+          // Open external viewer but do not pop any in-app routes
+          OpenFile.open(path);
+        }
+      } catch (e, st) {
+        developer.log('Error while generating PDF: $e\n$st', name: 'AddDistributionScreen', error: e);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('حدث خطأ أثناء إنشاء PDF: $e')));
+      }
+    } else {
+      // هنا يمكن ربط منطق الطباعة الحرارية الفعلية لاحقاً
+      // حالياً نعرض رسالة فقط
+    }
   }
 }
 

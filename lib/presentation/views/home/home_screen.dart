@@ -170,7 +170,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Expanded(
                     child: DashboardCard(
                     title: AppLocalizations.of(context)!.dashboardTotalSales,
-                    value: 'ريال${distributionVM.totalSales.toStringAsFixed(2)}',
+                    value: distributionVM.totalSales.toStringAsFixed(2),
                     icon: Icons.trending_up,
                     color: Colors.green,
                     onTap: () {
@@ -182,7 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Expanded(
                   child: DashboardCard(
                     title: AppLocalizations.of(context)!.dashboardOutstanding,
-                    value: 'ريال${customerVM.totalOutstanding.toStringAsFixed(2)}',
+                    value: customerVM.totalOutstanding.toStringAsFixed(2),
                     icon: Icons.account_balance_wallet,
                     color: Colors.orange,
                     onTap: () {
@@ -238,7 +238,8 @@ class _HomeScreenState extends State<HomeScreen> {
           icon: Icons.local_shipping,
           label: AppLocalizations.of(context)!.quickDistribution,
           onTap: () {
-            Navigator.pushNamed(context, AppRoutes.addDistribution);
+            // Open the distributions list instead of the add-distribution screen
+            Navigator.pushNamed(context, AppRoutes.distributionList);
           },
         ),
         QuickActionCard(
