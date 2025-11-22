@@ -56,7 +56,22 @@ void main() async {
   // package will not attempt runtime fetching from fonts.gstatic.com.
   GoogleFonts.config.allowRuntimeFetching = false;
 
-  runApp(const riverpod.ProviderScope(child: MyApp()));
+  // Wrap the app with the provider `MultiProvider` at the top level so
+  // ChangeNotifierProviders are not recreated when Riverpod `settings`
+  // changes. Recreating providers during rebuild caused disposal while
+  // dependents still existed which led to the '_dependents.isEmpty' assert.
+  runApp(
+    provider.MultiProvider(
+      providers: [
+        provider.ChangeNotifierProvider(create: (_) => getIt<AuthViewModel>()),
+        provider.ChangeNotifierProvider(create: (_) => getIt<CustomerViewModel>()),
+        provider.ChangeNotifierProvider(create: (_) => getIt<ProductViewModel>()),
+        provider.ChangeNotifierProvider(create: (_) => getIt<DistributionViewModel>()),
+        provider.ChangeNotifierProvider(create: (_) => getIt<ReportViewModel>()),
+      ],
+      child: const riverpod.ProviderScope(child: MyApp()),
+    ),
+  );
 }
 class MyApp extends riverpod.ConsumerWidget {
   const MyApp({super.key});
@@ -65,15 +80,11 @@ class MyApp extends riverpod.ConsumerWidget {
   Widget build(BuildContext context, riverpod.WidgetRef ref) {
     final settings = ref.watch(settingsNotifierProvider);
 
-    return provider.MultiProvider(
-      providers: [
-        provider.ChangeNotifierProvider(create: (_) => getIt<AuthViewModel>()),
-        provider.ChangeNotifierProvider(create: (_) => getIt<CustomerViewModel>()),
-        provider.ChangeNotifierProvider(create: (_) => getIt<ProductViewModel>()),
-        provider.ChangeNotifierProvider(create: (_) => getIt<DistributionViewModel>()),
-        provider.ChangeNotifierProvider(create: (_) => getIt<ReportViewModel>()),
-      ],
-      child: MaterialApp(
+    // Providers are created at the application root to avoid recreating
+    // and disposing them when Riverpod-driven settings change. Build the
+    // MaterialApp directly here and let Riverpod `ref` control runtime
+    // settings such as theme and locale.
+    return MaterialApp(
         title: 'Dairy Distribution',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
@@ -134,7 +145,6 @@ class MyApp extends riverpod.ConsumerWidget {
               return MaterialPageRoute(builder: (_) => const LoginScreen());
           }
         },
-      ),
     );
   }
 }

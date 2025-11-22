@@ -248,6 +248,24 @@ class DistributionViewModel extends ChangeNotifier {
     );
   }
 
+  // Update distribution
+  Future<bool> updateDistribution(Distribution distribution) async {
+    final result = await _repository.updateDistribution(distribution);
+
+    return result.fold(
+      (failure) {
+        _errorMessage = failure.message;
+        notifyListeners();
+        return false;
+      },
+      (_) {
+        // Reload list to reflect changes
+        loadDistributions();
+        return true;
+      },
+    );
+  }
+
   // Get distribution by ID
   Future<void> getDistributionById(String id) async {
     final result = await _repository.getDistributionById(id);
