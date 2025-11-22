@@ -99,16 +99,25 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 if (viewModel.products.isEmpty) {
                   return Center(
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.inventory_2_outlined,
                             size: 64, color: Colors.grey[400]),
                         const SizedBox(height: 16),
-            Text(AppLocalizations.of(context)!.noProductsFound,
-              style: Theme.of(context).textTheme.titleLarge),
+                        Text(
+                          AppLocalizations.of(context)!.noProductsFound,
+                          style: Theme.of(context).textTheme.titleLarge,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                         const SizedBox(height: 8),
-            Text(AppLocalizations.of(context)!.addFirstProductPrompt,
-              style: Theme.of(context).textTheme.bodyMedium),
+                        Text(
+                          AppLocalizations.of(context)!.addFirstProductPrompt,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ],
                     ),
                   );
@@ -160,7 +169,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                height: 80,
+                // further reduce height to ensure card fits the grid cell
+                height: 64,
                 decoration: BoxDecoration(
                   color: _getCategoryColor(product.category).withAlpha((0.2 * 255).round()),
                   borderRadius: BorderRadius.circular(8),
@@ -168,17 +178,17 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 child: Center(
                   child: Icon(
                     _getCategoryIcon(product.category),
-                    size: 48,
+                    size: 40,
                     color: _getCategoryColor(product.category),
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 6),
               Text(
                 product.name,
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  fontSize: 15,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -188,21 +198,29 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 _getCategoryName(product.category),
                 style: TextStyle(
                   color: Colors.grey[600],
-                  fontSize: 12,
+                  fontSize: 11,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              const Spacer(),
+              // small gap instead of Spacer to avoid pushing content beyond card height
+              const SizedBox(height: 4),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'ريال${product.price}/${product.unit}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Colors.green,
+                  Expanded(
+                    child: Text(
+                      'ريال${product.price}/${product.unit}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: Colors.green,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  if (product.isLowStock)
+                    const SizedBox(width: 8),
                   if (product.isLowStock)
                     Container(
                       padding:
@@ -218,6 +236,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                 ],
@@ -229,6 +249,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
                   color: product.isLowStock ? Colors.red : Colors.grey[600],
                   fontSize: 12,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),

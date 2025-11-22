@@ -197,6 +197,21 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                     Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(t.currentStockPrefix), Consumer<DistributionViewModel>(builder: (c, vm, _) => Text(vm.getCurrentTotal().toStringAsFixed(2)))]),
                     const SizedBox(height: 8),
                     TextField(controller: _paidController, keyboardType: TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: t.paid)),
+                    const SizedBox(height: 16),
+                    // زر طباعة الفاتورة
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.print),
+                        label: const Text('طباعة الفاتورة'),
+                        onPressed: _showPrintDialog,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.blue,
+                          side: const BorderSide(color: Colors.blue),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     SizedBox(width: double.infinity, child: _creating ? const Center(child: CircularProgressIndicator()) : ElevatedButton(onPressed: _submit, child: Text(t.createDistributionLabel))),
                   ],
@@ -205,6 +220,60 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
             ),
     );
     
+  }
+  void _showPrintDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        String selectedSize = '58mm';
+        return StatefulBuilder(
+          builder: (context, setState) => AlertDialog(
+            title: const Text('اختيار مقاس الطابعة'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                RadioListTile<String>(
+                  value: '58mm',
+                  groupValue: selectedSize,
+                  onChanged: (v) => setState(() => selectedSize = v!),
+                  title: const Text('58mm (عرض فعلي ~48mm) - مناسب للفواتير الصغيرة'),
+                ),
+                RadioListTile<String>(
+                  value: '80mm',
+                  groupValue: selectedSize,
+                  onChanged: (v) => setState(() => selectedSize = v!),
+                  title: const Text('80mm (عرض فعلي ~72mm) - مناسب للسوبرماركت/المطاعم الكبيرة'),
+                ),
+                // يمكن إضافة مقاسات أخرى لاحقًا
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('إلغاء'),
+              ),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.print),
+                label: const Text('طباعة'),
+                onPressed: () {
+                  Navigator.pop(context);
+                  _printInvoice(selectedSize);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _printInvoice(String size) {
+    // هنا منطق الطباعة الفعلي (حسب المقاس)
+    // حالياً فقط رسالة توضيحية
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('سيتم طباعة الفاتورة بمقاس $size')),
+    );
+    // يمكن لاحقاً ربطها بمكتبة طباعة فعلية
   }
 }
 

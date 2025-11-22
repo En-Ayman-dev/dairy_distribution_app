@@ -150,6 +150,22 @@ class DatabaseHelper {
       // Add migration logic here
     }
   }
+Future<void> deleteDb() async {
+    final dbPath = await getDatabasesPath();
+    final path = join(dbPath, DatabaseConstants.databaseName);
+
+    // 1. إغلاق الاتصال الحالي إذا كان مفتوحاً
+    if (_database != null) {
+      await _database!.close();
+      _database = null; // تصفير المتغير لضمان إعادة الفتح لاحقاً
+    }
+
+    // 2. حذف ملف قاعدة البيانات
+    await deleteDatabase(path);
+    
+    // (اختياري) طباعة للتأكد
+    // developer.log('Database deleted successfully', name: 'DatabaseHelper');
+  }
 
   Future<void> close() async {
     final db = await instance.database;

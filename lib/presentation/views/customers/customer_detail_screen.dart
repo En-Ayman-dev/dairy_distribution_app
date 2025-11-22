@@ -136,23 +136,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                       ],
                     ),
                     ElevatedButton.icon(
-                      onPressed: () {
-                        // Guarded navigation + logging for diagnostics
-                        try {
-                          // Log the tap for debugging; NavigatorObserver will also log the push
-                          // but adding a log here helps detect whether onPressed runs at all.
-                          // ignore: avoid_print
-                          // Use developer.log to keep logs consistent
-                          // (import dart:developer at top if needed later)
-                          // Navigate to distribution list so the user can select a distribution to record payment
-                          Navigator.of(context).pushNamed(AppRoutes.distributionList);
-                        } catch (e, st) {
-                          // If navigation fails, surface an error for the user and log it
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.errorOccurred)));
-                          // ignore: avoid_print
-                          print('Navigation to distributionList failed: $e\n$st');
-                        }
-                      },
+                      onPressed: () => _showCustomerPaymentDialog(context, widget.customer),
                       icon: const Icon(Icons.payment),
                       label: Text(AppLocalizations.of(context)!.payLabel),
                       style: ElevatedButton.styleFrom(
@@ -392,5 +376,64 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
         );
       }
     }
+  }
+
+  void _showCustomerPaymentDialog(BuildContext context, Customer customer) {
+    final controller = TextEditingController(text: customer.balance.toStringAsFixed(2));
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(AppLocalizations.of(context)!.payLabel),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${AppLocalizations.of(context)!.outstandingBalanceLabel}: ريال${customer.balance.toStringAsFixed(2)}'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: 'Amount',
+                helperText: 'Enter paid amount',
+              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(AppLocalizations.of(context)!.cancel),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final amount = double.tryParse(controller.text) ?? 0.0;
+              if (amount <= 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Enter a valid amount')),
+                );
+                return;
+              }
+
+              final vm = context.read<CustomerViewModel>();
+              final success = await vm.recordPayment(customer.id, amount);
+
+              if (!mounted) return;
+
+              Navigator.pop(dialogContext);
+
+              final messenger = ScaffoldMessenger.of(context);
+              if (success) {
+                messenger.showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.paymentRecorded)));
+              } else {
+                messenger.showSnackBar(SnackBar(content: Text(vm.errorMessage ?? AppLocalizations.of(context)!.errorOccurred)));
+              }
+            },
+            child: Text(AppLocalizations.of(context)!.payLabel),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+          ),
+        ],
+      ),
+    );
   }
 }

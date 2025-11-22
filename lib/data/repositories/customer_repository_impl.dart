@@ -29,47 +29,22 @@ class CustomerRepositoryImpl implements CustomerRepository {
   String get _userId => firebaseAuth.currentUser?.uid ?? '';
   bool get _isAuthenticated => firebaseAuth.currentUser != null;
 
+  // (*** تم تعديل هذه الدالة بالكامل ***)
   @override
   Future<Either<Failure, List<Customer>>> getAllCustomers() async {
     try {
-      developer.log('getAllCustomers called', name: 'CustomerRepository');
-      developer.log('currentUser uid', name: 'CustomerRepository', error: firebaseAuth.currentUser?.uid);
-      // Always fetch from local first (offline-first approach)
+      developer.log('getAllCustomers called (FIXED)', name: 'CustomerRepository');
+      
+      // 1. استراتيجية "Offline-First": دائماً قم بجلب البيانات من قاعدة البيانات المحلية.
+      // هي "مصدر الحقيقة" (Source of Truth) لواجهة المستخدم.
       final localCustomers = await localDataSource.getAllCustomers();
 
-      // If online, sync with remote
-      if (await networkInfo.isConnected) {
-          try {
-            developer.log('Attempting remote fetch for customers', name: 'CustomerRepository');
-            developer.log('userId', name: 'CustomerRepository', error: _userId);
-          if (!_isAuthenticated) {
-            // If not authenticated, return local data
-            return Right(localCustomers);
-          }
-
-          final remoteCustomers = await remoteDataSource.getAllCustomers(_userId);
-
-          // If remote returned no results but local has data, keep local to avoid
-          // wiping the UI with an empty remote result.
-          if (remoteCustomers.isEmpty && localCustomers.isNotEmpty) {
-            developer.log('Remote empty, preserving local customers', name: 'CustomerRepository');
-            return Right(localCustomers);
-          }
-
-          // Update local database with remote data
-          for (var customer in remoteCustomers) {
-            await localDataSource.insertCustomer(customer);
-          }
-
-          return Right(remoteCustomers);
-        } catch (e) {
-          // If remote fails, log the error and return local data
-          developer.log('Remote fetch failed', name: 'CustomerRepository', error: e);
-          return Right(localCustomers);
-        }
-      }
+      // 2. (تم حذف الكود الذي كان يجلب من السحابة ويقوم بالكتابة الفوقية)
+      //    الـ SyncManager هو المسؤول الوحيد عن جلب البيانات من السحابة
+      //    وتحديثها في الخلفية، وليس هذه الدالة.
 
       return Right(localCustomers);
+
     } on DatabaseException {
       return Left(DatabaseFailure('Failed to fetch customers from local database'));
     } catch (e) {
@@ -77,17 +52,16 @@ class CustomerRepositoryImpl implements CustomerRepository {
     }
   }
 
+
   @override
   Future<Either<Failure, Customer>> getCustomerById(String id) async {
     try {
       developer.log('getCustomerById called', name: 'CustomerRepository');
-      developer.log('currentUser uid', name: 'CustomerRepository', error: firebaseAuth.currentUser?.uid);
       final customer = await localDataSource.getCustomerById(id);
       
       if (customer == null) {
         if (await networkInfo.isConnected) {
           try {
-            developer.log('Attempting remote getCustomerById', name: 'CustomerRepository', error: _userId);
             if (!_isAuthenticated) {
               return Left(AuthenticationFailure('User not authenticated'));
             }
@@ -133,10 +107,8 @@ class CustomerRepositoryImpl implements CustomerRepository {
     try {
       final customerModel = CustomerModel.fromEntity(customer);
       
-      // Save to local database first
       await localDataSource.insertCustomer(customerModel);
 
-      // Queue for sync if online or offline
       await syncManager.queueSync(
         entityType: 'customer',
         entityId: customer.id,
@@ -144,7 +116,6 @@ class CustomerRepositoryImpl implements CustomerRepository {
         data: customerModel.toJson(),
       );
 
-      // If online, sync immediately
       if (await networkInfo.isConnected) {
         try {
           if (_isAuthenticated) {
@@ -255,7 +226,6 @@ class CustomerRepositoryImpl implements CustomerRepository {
       return remoteDataSource.watchCustomers(_userId).map(
             (customers) => Right<Failure, List<Customer>>(customers),
           ).handleError((e) {
-            // Map Firebase permission errors to Failure
             if (e is FirebaseException && e.code == 'permission-denied') {
               throw AuthenticationFailure('Insufficient permissions to read customers');
             }

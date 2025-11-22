@@ -199,4 +199,31 @@ class CustomerViewModel extends ChangeNotifier {
     _selectedCustomer = null;
     notifyListeners();
   }
+
+  // Record a payment for a customer by reducing their balance.
+  // Returns true on success.
+  Future<bool> recordPayment(String customerId, double amount) async {
+    // Find current customer to compute new balance
+    final index = _customers.indexWhere((c) => c.id == customerId);
+    if (index == -1) {
+      _errorMessage = 'Customer not found';
+      notifyListeners();
+      return false;
+    }
+
+    final current = _customers[index];
+    final newBalance = (current.balance - amount).clamp(0.0, double.infinity);
+
+    final result = await _repository.updateCustomerBalance(customerId, newBalance);
+
+    return result.fold((failure) {
+      _errorMessage = failure.message;
+      notifyListeners();
+      return false;
+    }, (_) {
+      // Reload customers to reflect updated balance
+      loadCustomers();
+      return true;
+    });
+  }
 }
