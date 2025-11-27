@@ -1,5 +1,5 @@
 
-// ignore_for_file: use_build_context_synchronously
+// ignore_for_file: use_build_context_synchronously, deprecated_member_use
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -511,7 +511,7 @@ class EditDistributionDialog extends StatefulWidget {
   final Distribution distribution;
   final DistributionViewModel viewModel;
 
-  const EditDistributionDialog({Key? key, required this.distribution, required this.viewModel}) : super(key: key);
+  const EditDistributionDialog({super.key, required this.distribution, required this.viewModel});
 
   @override
   State<EditDistributionDialog> createState() => _EditDistributionDialogState();
@@ -586,7 +586,7 @@ class _EditDistributionDialogState extends State<EditDistributionDialog> {
                         child: TextField(
                           controller: qtyControllers[i],
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          decoration: InputDecoration(labelText: '${t.quantityLabel}'),
+                          decoration: InputDecoration(labelText: t.quantityLabel),
                           onChanged: (_) => setState(() => currentTotal = _computeTotal()),
                         ),
                       ),
