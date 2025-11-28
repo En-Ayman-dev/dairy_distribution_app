@@ -55,7 +55,7 @@ dependencies:
   internet_connection_checker: ^1.0.0+1
 
   # التقارير - متوافقة ✓
-  pdf: ^3.10.7
+  pdf: ^3.8.4
   excel: ^4.0.2
   path_provider: ^2.1.1
 
@@ -73,6 +73,11 @@ dependencies:
     sdk: flutter
   open_file_macos: ^0.2.0
   flutter_localization: ^0.2.1
+  blue_thermal_printer: ^1.2.3
+  esc_pos_utils: ^1.1.0
+  permission_handler: ^11.3.0
+  screenshot: ^3.0.0
+  image: ^3.3.0
 
 dev_dependencies:
   flutter_test:

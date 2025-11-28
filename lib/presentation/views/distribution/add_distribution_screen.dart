@@ -1,14 +1,23 @@
+import 'dart:typed_data'; // إضافة مهمة
 import 'package:flutter/material.dart';
 import 'dart:developer' as developer;
 import 'package:provider/provider.dart';
 import 'package:open_file/open_file.dart';
+import 'package:blue_thermal_printer/blue_thermal_printer.dart';
+import 'package:screenshot/screenshot.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+import 'package:image/image.dart' as img;
 
 // --- Imports: Core & Utils ---
 import '../../../core/utils/pdf_generator.dart';
 import '../../../core/utils/service_locator.dart';
+import '../../../core/services/thermal_printer_service.dart';
+import '../../../core/utils/ticket_generator.dart';
+import '../../../domain/entities/distribution.dart';
 import '../../../l10n/app_localizations.dart';
 
-// --- Imports: Domain Layer (Repositories & Entities) ---
+// --- Imports: Domain Layer ---
 import '../../../domain/repositories/customer_repository.dart';
 import '../../../domain/repositories/product_repository.dart';
 import '../../../domain/entities/customer.dart';
@@ -17,6 +26,7 @@ import '../../../domain/entities/product.dart';
 // --- Imports: Presentation Layer ---
 import '../../viewmodels/distribution_viewmodel.dart';
 import '../../widgets/print_button.dart';
+import '../../widgets/receipt_widget.dart';
 
 class AddDistributionScreen extends StatefulWidget {
   const AddDistributionScreen({super.key});
@@ -38,14 +48,18 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
   
   bool _loading = true;
   bool _creating = false;
-  
-  // متغير للتحكم في خيار الكمية المجانية
   bool _isFree = false;
+  BluetoothDevice? _selectedPrinterDevice;
+
+  final _printerService = ThermalPrinterService();
+  final _ticketGenerator = TicketGenerator();
+  final _screenshotController = ScreenshotController(); // نستخدمه للالتقاط المباشر
 
   @override
   void initState() {
     super.initState();
     _loadLookups();
+    // placeholder - no immediate auto-reconnect performed here
     WidgetsBinding.instance.addPostFrameCallback((_) {
       try {
         context.read<DistributionViewModel>().clearLastCreatedDistributionId();
@@ -71,18 +85,12 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
 
       setState(() {
         customerResult.fold(
-          (failure) {
-             developer.log('Failed to load customers: ${failure.message}');
-             _customers = [];
-          },
+          (failure) { _customers = []; },
           (data) => _customers = data as List<Customer>,
         );
 
         productResult.fold(
-          (failure) {
-             developer.log('Failed to load products: ${failure.message}');
-             _products = [];
-          },
+          (failure) { _products = []; },
           (data) => _products = data as List<Product>,
         );
 
@@ -96,7 +104,6 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
         _loading = false;
       });
     } catch (e) {
-      developer.log('Error loading lookups', error: e);
       if (mounted) setState(() => _loading = false);
     }
   }
@@ -109,9 +116,77 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
     super.dispose();
   }
 
-  void _addItem() {
-    final _ = AppLocalizations.of(context)!;
+  Future<void> _selectPrinter() async {
+    final devices = await _printerService.getBondedDevices();
+    if (devices.isEmpty) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('لا توجد طابعات مقترنة.')));
+      return;
+    }
 
+    final selected = await showDialog<BluetoothDevice>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('اختر الطابعة'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: devices.length,
+            itemBuilder: (ctx, i) => ListTile(
+              title: Text(devices[i].name ?? 'Unknown'),
+              subtitle: Text(devices[i].address ?? ''),
+              onTap: () => Navigator.pop(ctx, devices[i]),
+              leading: const Icon(Icons.print),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (selected == null) return;
+
+    final ok = await _printerService.connect(selected);
+    if (ok) {
+      setState(() => _selectedPrinterDevice = selected);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم الاتصال بالطابعة')));
+    } else {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل الاتصال بالطابعة')));
+    }
+  }
+
+  /// Show in-app preview of the captured receipt image and return true to proceed printing
+  Future<bool> _showImagePreview(Uint8List imageBytes) async {
+    final proceed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('معاينة الفاتورة'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.memory(imageBytes),
+              const SizedBox(height: 8),
+              const Text('تحقق من أن المحتوى ظاهر قبل الطباعة'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('طباعة'),
+          ),
+        ],
+      ),
+    );
+
+    return proceed ?? false;
+  }
+
+  void _addItem() {
     final vm = context.read<DistributionViewModel>();
     if (_selectedProductId == null) return;
     
@@ -120,52 +195,35 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
     final qty = double.tryParse(_qtyController.text) ?? 0.0;
     if (qty <= 0) return;
 
-    // --- 1. التحقق من المخزون (Inventory Check) ---
-    // نحسب الكمية الموجودة حالياً في السلة لهذا المنتج
     double currentCartQty = 0.0;
     try {
       final existingItem = vm.currentItems.firstWhere((item) => item.productId == product.id);
       currentCartQty = existingItem.quantity;
-    } catch (_) {
-      // المنتج غير موجود في السلة
-    }
+    } catch (_) {}
 
-    // التحقق: هل (الكمية الجديدة + ما في السلة) أكبر من المخزون؟
     if ((qty + currentCartQty) > product.stock) {
       final remaining = product.stock - currentCartQty;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(
-          'الكمية المطلوبة أكبر من المخزون المتوفر!\n'
-          'المخزون الحالي: ${product.stock}\n'
-          'الكمية في السلة: $currentCartQty\n'
-          'المتاح للإضافة: ${remaining > 0 ? remaining : 0}'
-        ),
+        content: Text('الكمية غير متوفرة. المتاح: ${remaining > 0 ? remaining : 0}'),
         backgroundColor: Colors.red,
-        duration: const Duration(seconds: 4),
       ));
-      return; // إيقاف العملية
+      return; 
     }
-    // ------------------------------------------------
 
-    // --- 2. منطق السعر المجاني ---
     final price = _isFree ? 0.0 : (double.tryParse(_priceController.text) ?? product.price);
     
     vm.addItem(productId: product.id, productName: product.name, quantity: qty, price: price);
     
-    // إعادة تعيين الحقول
     _qtyController.text = '1';
     _priceController.text = product.price.toString();
     setState(() {
-      _isFree = false; // إعادة تعيين خيار المجاني
+      _isFree = false;
     });
   }
 
   Future<void> _submit() async {
     final vm = context.read<DistributionViewModel>();
-    if (_selectedCustomerId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.errorOccurred)));
-      return;
-    }
+    if (_selectedCustomerId == null) return;
     if (vm.currentItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.addFirstProductPrompt)));
       return;
@@ -201,6 +259,7 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
+    
     return Scaffold(
       appBar: AppBar(title: Text(t.createDistributionLabel)),
       body: _loading
@@ -213,23 +272,17 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                   children: [
                     Text(t.customersTitle, style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 8),
-                    Row(children: [
-                      Expanded(
-                        child: DropdownButton<String>(
-                          value: _selectedCustomerId,
-                          isExpanded: true,
-                          items: _customers.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
-                          onChanged: (v) => setState(() => _selectedCustomerId = v),
-                        ),
-                      ),
-                    ]),
+                    DropdownButton<String>(
+                      value: _selectedCustomerId,
+                      isExpanded: true,
+                      items: _customers.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
+                      onChanged: (v) => setState(() => _selectedCustomerId = v),
+                    ),
                     const SizedBox(height: 16),
 
                     Text(t.addProductTitle, style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 8),
 
-                    // --- تصميم جديد لصف إضافة المنتج ---
-                    // الصف الأول: المنتج والكمية
                     Row(
                       children: [
                         Expanded(
@@ -260,7 +313,6 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    // الصف الثاني: السعر، خيار مجاني، وزر الإضافة
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
@@ -269,7 +321,7 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                           child: TextField(
                             controller: _priceController,
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            enabled: !_isFree, // تعطيل السعر إذا كان مجاني
+                            enabled: !_isFree, 
                             decoration: InputDecoration(
                               labelText: t.priceLabel,
                               filled: _isFree,
@@ -278,7 +330,6 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        // خيار "مجاني"
                         Row(
                           children: [
                             Checkbox(
@@ -287,7 +338,6 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                                 setState(() {
                                   _isFree = val ?? false;
                                   if (!_isFree && _selectedProductId != null) {
-                                    // استعادة السعر الأصلي عند إلغاء المجاني
                                     final p = _products.firstWhere((p) => p.id == _selectedProductId);
                                     _priceController.text = p.price.toString();
                                   }
@@ -304,7 +354,6 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                         ),
                       ],
                     ),
-                    // ------------------------------------
 
                     const SizedBox(height: 12),
                     Text(t.itemsLabel, style: Theme.of(context).textTheme.titleMedium),
@@ -321,13 +370,9 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                             separatorBuilder: (_, __) => const Divider(height: 1),
                             itemBuilder: (_, idx) {
                               final it = items[idx];
-                              // عرض (مجاني) إذا كان السعر صفر
-                              final isFreeItem = it.price == 0;
                               return ListTile(
                                 title: Text(it.productName),
-                                subtitle: Text(isFreeItem 
-                                  ? '${it.quantity} x (مجاني)' 
-                                  : '${it.quantity} x ${it.price.toStringAsFixed(2)}'),
+                                subtitle: Text(it.price == 0 ? '${it.quantity} (مجاني)' : '${it.quantity} x ${it.price}'),
                                 trailing: Row(mainAxisSize: MainAxisSize.min, children: [Text(it.subtotal.toStringAsFixed(2)), IconButton(onPressed: () => vm.removeItem(it.id), icon: const Icon(Icons.delete_outline))]),
                               );
                             },
@@ -341,7 +386,7 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                     const SizedBox(height: 8),
                     TextField(controller: _paidController, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: t.paid)),
                     const SizedBox(height: 16),
-                    // Print button is shown only after successful save
+                    
                     Consumer<DistributionViewModel>(
                       builder: (c, vm, _) {
                         final canPrint = vm.lastCreatedDistributionId != null;
@@ -349,6 +394,27 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: _selectPrinter,
+                                    icon: const Icon(Icons.bluetooth),
+                                    label: Text(_selectedPrinterDevice?.name ?? 'اختر الطابعة'),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                if (_selectedPrinterDevice != null)
+                                  IconButton(
+                                    onPressed: () async {
+                                      await _printerService.disconnect();
+                                      setState(() => _selectedPrinterDevice = null);
+                                    },
+                                    icon: const Icon(Icons.link_off),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
                             PrintButton(
                               onPrint: (printerSize, output, preview) async {
                                 await _printInvoice(printerSize, output, preview);
@@ -369,9 +435,7 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                   ],
                 ),
               ),
-            ),
-    );
-    
+            ),);
   }
   
   Future<void> _printInvoice(PrinterSize size, PrintOutput output, bool preview) async {
@@ -382,56 +446,237 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
       await vm.getDistributionById(vm.lastCreatedDistributionId!);
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(output == PrintOutput.pdf
-          ? 'سيتم إنشاء ملف PDF للمسح/الطباعة بمقاس ${size.name}'
-          : 'سيتم طباعة الفاتورة بمقاس ${size.name} (عرض فعلي ${size.printableWidthMm}mm)')),
-    );
-
     if (output == PrintOutput.pdf) {
+      // (كود PDF القديم كما هو)
       final pdfGen = PDFGenerator();
-      final distribution = vm.selectedDistribution;
-      final items = distribution?.items ?? vm.currentItems;
-      final total = distribution?.totalAmount ?? vm.getCurrentTotal();
-      final paid = distribution?.paidAmount ?? vm.currentPaidAmount;
-      final previousBalance = customer.balance;
+      final distribution = vm.selectedDistribution ?? Distribution(
+        id: 'TEMP', customerId: customer.id, customerName: customer.name,
+        distributionDate: DateTime.now(), items: vm.currentItems,
+        totalAmount: vm.getCurrentTotal(), paidAmount: vm.currentPaidAmount,
+        paymentStatus: PaymentStatus.pending, createdAt: DateTime.now(), updatedAt: DateTime.now()
+      );
 
       try {
-        developer.log('Attempting to generate distribution PDF', name: 'AddDistributionScreen');
         final path = await pdfGen.generateDistributionInvoice(
           customer: customer,
-          items: items,
-          total: total,
-          paid: paid,
-          previousBalance: previousBalance,
+          items: distribution.items,
+          total: distribution.totalAmount,
+          paid: distribution.paidAmount,
+          previousBalance: customer.balance,
           dateTime: DateTime.now(),
           createdBy: 'المستخدم',
           printerSize: size,
           notes: null,
         );
-
-        developer.log('PDF generated at: $path', name: 'AddDistributionScreen');
-
         if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم إنشاء PDF'), action: SnackBarAction(label: 'فتح', onPressed: () => OpenFile.open(path))));
+        if (preview) OpenFile.open(path);
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e')));
+      }
+    } else {
+      // --- الطباعة الحرارية (الحل النهائي للورقة البيضاء) ---
+      
+      // تحقق من توفر البلوتوث أولاً
+      if (!(await _printerService.isAvailable)) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('الرجاء تفعيل البلوتوث')));
+        return;
+      }
 
-        final snack = SnackBar(
-          content: Text('تم إنشاء PDF: ${path.split(RegExp(r"[\\/]")).last}'),
-          action: SnackBarAction(
-            label: 'فتح',
-            onPressed: () => OpenFile.open(path),
-          ),
-          duration: const Duration(seconds: 6),
+      // تأكد من الاتصال — حاول الاتصال تلقائياً إذا لم نكن متصلين
+      // إذا حدد المستخدم طابعة يدوياً سابقاً، جرب الاتصال بها أولاً
+      if (_selectedPrinterDevice != null && !(await _printerService.isConnected)) {
+        final ok = await _printerService.connect(_selectedPrinterDevice!);
+        if (!ok) {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل الاتصال بالطابعة المحددة')));
+          // تعيد تعيين الطابعة ليرجع المستخدم لاختيار طابعة أخرى
+          setState(() => _selectedPrinterDevice = null);
+          return;
+        }
+      } else if (!(await _printerService.isConnected)) {
+        // لا توجد طابعة محددة؛ اعمل الاختيار التلقائي السابق
+        final devices = await _printerService.getBondedDevices();
+        if (devices.isEmpty) {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('لا توجد طابعات مقترنة.')));
+          return;
+        }
+
+        // إذا كان هناك جهاز واحد فقط، حاول الاتصال به تلقائياً
+        if (devices.length == 1) {
+          final ok = await _printerService.connect(devices.first);
+          if (!ok && mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل الاتصال بالطابعة')));
+          if (!ok) return;
+        } else {
+          // إذا كان هناك أكثر من جهاز، اطلب من المستخدم الاختيار
+          final selectedDevice = await showDialog<BluetoothDevice>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('اختر الطابعة'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: devices.length,
+                  itemBuilder: (ctx, i) => ListTile(
+                    title: Text(devices[i].name ?? 'Unknown'),
+                    subtitle: Text(devices[i].address ?? ''),
+                    onTap: () => Navigator.pop(ctx, devices[i]),
+                    leading: const Icon(Icons.print),
+                  ),
+                ),
+              ),
+            ),
+          );
+
+          if (selectedDevice == null) return;
+          final ok = await _printerService.connect(selectedDevice);
+          if (!ok && mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل الاتصال')));
+          if (!ok) return;
+        }
+      }
+
+      try {
+        // تجهيز البيانات
+        final distribution = vm.selectedDistribution ?? Distribution(
+          id: 'New', customerId: customer.id, customerName: customer.name,
+          distributionDate: DateTime.now(), items: vm.currentItems,
+          totalAmount: vm.getCurrentTotal(), paidAmount: vm.currentPaidAmount,
+          paymentStatus: PaymentStatus.pending, createdAt: DateTime.now(), updatedAt: DateTime.now()
         );
 
-        ScaffoldMessenger.of(context).showSnackBar(snack);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('جاري معالجة الصورة...')));
 
-        if (preview) {
-          OpenFile.open(path);
+        // Capture with verification: try multiple attempts with increasing delay
+        Future<Uint8List?> _captureVerifiedImage() async {
+          final attempts = [300, 600, 1000]; // milliseconds
+          for (int i = 0; i < attempts.length; i++) {
+            final delayMs = attempts[i];
+            try {
+              final Uint8List bytes = await _screenshotController.captureFromWidget(
+                Material(
+                  child: Directionality(
+                    textDirection: TextDirection.rtl,
+                    child: Theme(
+                      data: ThemeData.light(),
+                      child: ReceiptWidget(distribution: distribution, customer: customer),
+                    ),
+                  ),
+                ),
+                delay: Duration(milliseconds: delayMs),
+                pixelRatio: 2.0 + i * 0.5,
+              );
+
+              // Save debug image for inspection
+              try {
+                final dir = await getTemporaryDirectory();
+                final file = File('${dir.path}/receipt_debug_attempt_${i + 1}_${DateTime.now().millisecondsSinceEpoch}.png');
+                await file.writeAsBytes(bytes);
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('صورة الفاتورة محفوظة للتصحيح: ${file.path}')));
+              } catch (e) {
+                developer.log('Failed saving debug image', error: e);
+              }
+
+              // Quick sanity checks: size and whiteness
+              if (bytes.length < 2000) {
+                developer.log('Captured image too small (${bytes.length} bytes), retrying...');
+                await Future.delayed(const Duration(milliseconds: 200));
+                continue;
+              }
+
+              final img.Image? decoded = img.decodeImage(bytes);
+              if (decoded == null) {
+                developer.log('Failed to decode captured image, retrying...');
+                await Future.delayed(const Duration(milliseconds: 200));
+                continue;
+              }
+
+              // compute percent white pixels
+              int whiteCount = 0;
+              for (int y = 0; y < decoded.height; y += 4) {
+                for (int x = 0; x < decoded.width; x += 4) {
+                  final p = decoded.getPixel(x, y);
+                  final r = img.getRed(p);
+                  final g = img.getGreen(p);
+                  final b = img.getBlue(p);
+                  final luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b);
+                  if (luminance > 250) whiteCount++;
+                }
+              }
+
+              final totalSamples = ((decoded.width / 4).ceil()) * ((decoded.height / 4).ceil());
+              final whiteRatio = whiteCount / (totalSamples > 0 ? totalSamples : 1);
+              developer.log('Capture attempt ${i + 1}: bytes=${bytes.length}, whiteRatio=$whiteRatio');
+
+              // If less than 98% white, accept
+              if (whiteRatio < 0.98) {
+                return bytes;
+              }
+
+              // otherwise retry
+              await Future.delayed(const Duration(milliseconds: 200));
+            } catch (e) {
+              developer.log('Capture attempt error: $e');
+              await Future.delayed(const Duration(milliseconds: 200));
+            }
+          }
+          return null;
         }
-      } catch (e, st) {
-        developer.log('Error while generating PDF: $e\n$st', name: 'AddDistributionScreen', error: e);
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('حدث خطأ أثناء إنشاء PDF: $e')));
+
+        final Uint8List? imageBytes = await _captureVerifiedImage();
+        if (imageBytes == null) {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل التقاط الفاتورة (النتيجة بيضاء). أعد المحاولة')));
+          return;
+        }
+
+        // عرض معاينة للمستخدم قبل الإرسال للطابعة
+        final confirmed = await _showImagePreview(imageBytes);
+        if (!confirmed) {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إلغاء الطباعة')));
+          return;
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('جاري الإرسال للطابعة...')));
+
+        // 2. تحويل الصورة إلى أوامر وإرسالها
+        final bytes = await _ticketGenerator.generateImageTicket(imageBytes: imageBytes);
+
+        // تحقق أن الأوامر ليست فارغة — إن كانت كذلك، أمنع الطباعة واحتفظ بالمخرجات للتدقيق
+        if (bytes.isEmpty) {
+          try {
+            final dir = await getTemporaryDirectory();
+            final file = File('${dir.path}/escpos_debug_${DateTime.now().millisecondsSinceEpoch}.bin');
+            await file.writeAsBytes(bytes);
+            if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('لم تُنشأ أوامر الطباعة. تم حفظ ملف التصحيح: ${file.path}')));
+          } catch (e) {
+            developer.log('Failed saving ESC/POS debug file', error: e);
+          }
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('خطأ: لم يتم إنشاء أوامر الطباعة')));
+          return;
+        }
+
+        // احفظ نسخة من أوامر الطباعة للتدقيق إن رغبت بذلك (مفيد للتحقق من الأمر المرسل)
+        try {
+          final dir = await getTemporaryDirectory();
+          final file = File('${dir.path}/escpos_${DateTime.now().millisecondsSinceEpoch}.bin');
+          await file.writeAsBytes(bytes);
+          developer.log('Saved ESC/POS bytes to: ${file.path}');
+        } catch (_) {}
+
+        final result = await _printerService.printBytes(bytes);
+
+        // امنح الطابعة بعض الوقت لمعالجة المهمة قبل إظهار رسالة النجاح
+        await Future.delayed(const Duration(milliseconds: 800));
+
+        if (mounted) {
+          if (result) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تمت الطباعة بنجاح'), backgroundColor: Colors.green));
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('حدث خطأ أثناء الطباعة'), backgroundColor: Colors.red));
+          }
+        }
+      } catch (e) {
+        developer.log('Print error', error: e);
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e')));
       }
     }
   }
