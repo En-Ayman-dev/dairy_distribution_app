@@ -2,194 +2,124 @@ import 'package:dartz/dartz.dart';
 import '../../domain/entities/customer.dart';
 import '../../domain/repositories/customer_repository.dart';
 import '../../core/errors/failures.dart';
-import '../../core/errors/exceptions.dart';
-import '../../core/network/network_info.dart';
-import '../datasources/local/customer_local_datasource.dart';
 import '../datasources/remote/customer_remote_datasource.dart';
 import '../models/customer_model.dart';
-import '../../core/network/sync_manager.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:developer' as developer;
 
 class CustomerRepositoryImpl implements CustomerRepository {
-  final CustomerLocalDataSource localDataSource;
   final CustomerRemoteDataSource remoteDataSource;
-  final NetworkInfo networkInfo;
-  final SyncManager syncManager;
   final FirebaseAuth firebaseAuth;
 
   CustomerRepositoryImpl({
-    required this.localDataSource,
     required this.remoteDataSource,
-    required this.networkInfo,
-    required this.syncManager,
     required this.firebaseAuth,
   });
 
   String get _userId => firebaseAuth.currentUser?.uid ?? '';
   bool get _isAuthenticated => firebaseAuth.currentUser != null;
 
-  // (*** تم تعديل هذه الدالة بالكامل ***)
   @override
   Future<Either<Failure, List<Customer>>> getAllCustomers() async {
+    if (!_isAuthenticated) {
+      return Left(AuthenticationFailure('User not authenticated'));
+    }
     try {
-      developer.log('getAllCustomers called (FIXED)', name: 'CustomerRepository');
-      
-      // 1. استراتيجية "Offline-First": دائماً قم بجلب البيانات من قاعدة البيانات المحلية.
-      // هي "مصدر الحقيقة" (Source of Truth) لواجهة المستخدم.
-      final localCustomers = await localDataSource.getAllCustomers();
-
-      // 2. (تم حذف الكود الذي كان يجلب من السحابة ويقوم بالكتابة الفوقية)
-      //    الـ SyncManager هو المسؤول الوحيد عن جلب البيانات من السحابة
-      //    وتحديثها في الخلفية، وليس هذه الدالة.
-
-      return Right(localCustomers);
-
-    } on DatabaseException {
-      return Left(DatabaseFailure('Failed to fetch customers from local database'));
+      developer.log('getAllCustomers called (Remote Only)', name: 'CustomerRepository');
+      final remoteCustomers = await remoteDataSource.getAllCustomers(_userId);
+      return Right(remoteCustomers);
     } catch (e) {
-      return Left(UnexpectedFailure(e.toString()));
+      developer.log('Failed to fetch customers from remote', error: e, name: 'CustomerRepository');
+      return Left(ServerFailure(e.toString()));
     }
   }
 
-
   @override
   Future<Either<Failure, Customer>> getCustomerById(String id) async {
+    if (!_isAuthenticated) {
+      return Left(AuthenticationFailure('User not authenticated'));
+    }
     try {
-      developer.log('getCustomerById called', name: 'CustomerRepository');
-      final customer = await localDataSource.getCustomerById(id);
-      
-      if (customer == null) {
-        if (await networkInfo.isConnected) {
-          try {
-            if (!_isAuthenticated) {
-              return Left(AuthenticationFailure('User not authenticated'));
-            }
-            final remoteCustomer = await remoteDataSource.getCustomerById(_userId, id);
-            await localDataSource.insertCustomer(remoteCustomer);
-            return Right(remoteCustomer);
-          } catch (e) {
-            developer.log('Remote getCustomerById failed', name: 'CustomerRepository', error: e);
-            return Left(NotFoundFailure('Customer not found'));
-          }
-        }
-        return Left(NotFoundFailure('Customer not found'));
-      }
-
+      final customer = await remoteDataSource.getCustomerById(_userId, id);
       return Right(customer);
     } catch (e) {
-      return Left(UnexpectedFailure(e.toString()));
+      return Left(NotFoundFailure('Customer not found'));
     }
   }
 
   @override
   Future<Either<Failure, List<Customer>>> getCustomersByStatus(String status) async {
+    if (!_isAuthenticated) {
+      return Left(AuthenticationFailure('User not authenticated'));
+    }
     try {
-      final customers = await localDataSource.getCustomersByStatus(status);
-      return Right(customers);
+      // Currently fetching all and filtering in memory since we are removing local DB.
+      // Optimization: This should be moved to a Firestore Query in RemoteDataSource later.
+      final allCustomers = await remoteDataSource.getAllCustomers(_userId);
+      final filteredCustomers = allCustomers.where((c) => c.status == status).toList();
+      return Right(filteredCustomers);
     } catch (e) {
-      return Left(DatabaseFailure('Failed to fetch customers by status'));
+      return Left(ServerFailure('Failed to fetch customers by status'));
     }
   }
 
   @override
   Future<Either<Failure, List<Customer>>> searchCustomers(String query) async {
+    if (!_isAuthenticated) {
+      return Left(AuthenticationFailure('User not authenticated'));
+    }
     try {
-      final customers = await localDataSource.searchCustomers(query);
-      return Right(customers);
+      // Currently fetching all and filtering in memory.
+      // Optimization: This works fine for small datasets but should be optimized for scale.
+      final allCustomers = await remoteDataSource.getAllCustomers(_userId);
+      final filteredCustomers = allCustomers.where((c) {
+        return c.name.toLowerCase().contains(query.toLowerCase()) ||
+               c.phone.contains(query);
+      }).toList();
+      return Right(filteredCustomers);
     } catch (e) {
-      return Left(DatabaseFailure('Failed to search customers'));
+      return Left(ServerFailure('Failed to search customers'));
     }
   }
 
   @override
   Future<Either<Failure, String>> addCustomer(Customer customer) async {
+    if (!_isAuthenticated) {
+      return Left(AuthenticationFailure('User not authenticated'));
+    }
     try {
       final customerModel = CustomerModel.fromEntity(customer);
-      
-      await localDataSource.insertCustomer(customerModel);
-
-      await syncManager.queueSync(
-        entityType: 'customer',
-        entityId: customer.id,
-        operation: 'create',
-        data: customerModel.toJson(),
-      );
-
-      if (await networkInfo.isConnected) {
-        try {
-          if (_isAuthenticated) {
-            await remoteDataSource.addCustomer(_userId, customerModel);
-            await syncManager.markAsSynced('customer', customer.id);
-          }
-        } catch (e) {
-          // Will be synced later
-        }
-      }
-
+      await remoteDataSource.addCustomer(_userId, customerModel);
       return Right(customer.id);
     } catch (e) {
-      return Left(DatabaseFailure('Failed to add customer'));
+      return Left(ServerFailure('Failed to add customer'));
     }
   }
 
   @override
   Future<Either<Failure, void>> updateCustomer(Customer customer) async {
+    if (!_isAuthenticated) {
+      return Left(AuthenticationFailure('User not authenticated'));
+    }
     try {
       final customerModel = CustomerModel.fromEntity(customer);
-      
-      await localDataSource.updateCustomer(customerModel);
-
-      await syncManager.queueSync(
-        entityType: 'customer',
-        entityId: customer.id,
-        operation: 'update',
-        data: customerModel.toJson(),
-      );
-
-      if (await networkInfo.isConnected) {
-        try {
-          if (_isAuthenticated) {
-            await remoteDataSource.updateCustomer(_userId, customerModel);
-            await syncManager.markAsSynced('customer', customer.id);
-          }
-        } catch (e) {
-          // Will be synced later
-        }
-      }
-
+      await remoteDataSource.updateCustomer(_userId, customerModel);
       return const Right(null);
     } catch (e) {
-      return Left(DatabaseFailure('Failed to update customer'));
+      return Left(ServerFailure('Failed to update customer'));
     }
   }
 
   @override
   Future<Either<Failure, void>> deleteCustomer(String id) async {
+    if (!_isAuthenticated) {
+      return Left(AuthenticationFailure('User not authenticated'));
+    }
     try {
-      await localDataSource.deleteCustomer(id);
-
-      await syncManager.queueSync(
-        entityType: 'customer',
-        entityId: id,
-        operation: 'delete',
-        data: {'id': id},
-      );
-
-      if (await networkInfo.isConnected) {
-        try {
-          if (_isAuthenticated) {
-            await remoteDataSource.deleteCustomer(_userId, id);
-            await syncManager.markAsSynced('customer', id);
-          }
-        } catch (e) {
-          // Will be synced later
-        }
-      }
-
+      await remoteDataSource.deleteCustomer(_userId, id);
       return const Right(null);
     } catch (e) {
-      return Left(DatabaseFailure('Failed to delete customer'));
+      return Left(ServerFailure('Failed to delete customer'));
     }
   }
 
@@ -198,39 +128,20 @@ class CustomerRepositoryImpl implements CustomerRepository {
     String id,
     double balance,
   ) async {
+    if (!_isAuthenticated) {
+      return Left(AuthenticationFailure('User not authenticated'));
+    }
     try {
-      final prev = await localDataSource.getCustomerById(id);
-      developer.log('Updating customer balance local: id=$id prev=${prev?.balance ?? 'null'} new=$balance', name: 'CustomerRepository');
-      await localDataSource.updateCustomerBalance(id, balance);
-
-      // Queue sync for the customer change
-      final customer = await localDataSource.getCustomerById(id);
-      if (customer != null) {
-        developer.log('Queueing customer update for sync: id=${customer.id} balance=${customer.balance}', name: 'CustomerRepository');
-        await syncManager.queueSync(
-          entityType: 'customer',
-          entityId: customer.id,
-          operation: 'update',
-          data: CustomerModel.fromEntity(customer).toJson(),
-        );
-      }
-
-      if (await networkInfo.isConnected) {
-        try {
-          if (_isAuthenticated && customer != null) {
-            developer.log('Attempting remote customer update for ${customer.id}', name: 'CustomerRepository');
-            await remoteDataSource.updateCustomer(_userId, customer);
-            developer.log('Remote customer update succeeded for ${customer.id}', name: 'CustomerRepository');
-            await syncManager.markAsSynced('customer', customer.id);
-          }
-        } catch (e) {
-          developer.log('Remote customer update failed, will sync later: $e', name: 'CustomerRepository');
-        }
-      }
-
+      // Since we don't have local state, we fetch fresh data first to ensure consistency,
+      // then update. Ideally, RemoteDataSource should have a specific atomic 'updateField' method.
+      final currentCustomerModel = await remoteDataSource.getCustomerById(_userId, id);
+      
+      final updatedCustomer = currentCustomerModel.copyWith(balance: balance);
+      
+      await remoteDataSource.updateCustomer(_userId, updatedCustomer);
       return const Right(null);
     } catch (e) {
-      return Left(DatabaseFailure('Failed to update customer balance'));
+      return Left(ServerFailure('Failed to update customer balance'));
     }
   }
 
@@ -239,7 +150,6 @@ class CustomerRepositoryImpl implements CustomerRepository {
     if (!_isAuthenticated) {
       return Stream.value(Left(AuthenticationFailure('User not authenticated')));
     }
-
     try {
       return remoteDataSource.watchCustomers(_userId).map(
             (customers) => Right<Failure, List<Customer>>(customers),

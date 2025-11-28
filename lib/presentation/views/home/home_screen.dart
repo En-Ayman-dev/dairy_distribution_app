@@ -6,11 +6,10 @@ import '../../viewmodels/customer_viewmodel.dart';
 import '../../viewmodels/product_viewmodel.dart';
 import '../../viewmodels/distribution_viewmodel.dart';
 import '../../../domain/entities/distribution.dart';
+// تأكد من استيراد ملف الـ Enum إذا كان منفصلاً، أو الاعتماد على distribution.dart إذا كان داخله
 import '../../../app/routes/app_routes.dart';
 import 'widgets/dashboard_card.dart';
 import 'widgets/quick_action_card.dart';
-import '../../../core/network/sync_manager.dart';
-import '../../../core/utils/service_locator.dart';
 import '../../../l10n/app_localizations.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -24,15 +23,15 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Delay loading and syncing until after the first frame to avoid
+    // Delay loading until after the first frame to avoid
     // calling notifyListeners() (via providers) during the build phase.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
-      _syncData();
     });
   }
 
   Future<void> _loadData() async {
+    // جلب البيانات من السحابة (عبر الـ ViewModels التي تم تحديثها)
     await Future.wait([
       context.read<CustomerViewModel>().loadCustomers(),
       context.read<ProductViewModel>().loadProducts(),
@@ -40,10 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
     ]);
   }
 
-  Future<void> _syncData() async {
-    final syncManager = getIt<SyncManager>();
-    await syncManager.syncAllPending();
-  }
+  // --- تم حذف _syncData لأن المزامنة الآن تلقائية عبر Firebase SDK ---
 
   @override
   Widget build(BuildContext context) {
@@ -53,11 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: Text(AppLocalizations.of(context)!.appTitle),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.sync),
-            onPressed: _syncData,
-            tooltip: AppLocalizations.of(context)!.syncTooltip,
-          ),
+          // --- تم حذف زر المزامنة اليدوي ---
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
             onPressed: () {
@@ -168,7 +160,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Row(
               children: [
                 Expanded(
-                    child: DashboardCard(
+                  child: DashboardCard(
                     title: AppLocalizations.of(context)!.dashboardTotalSales,
                     value: distributionVM.totalSales.toStringAsFixed(2),
                     icon: Icons.trending_up,
@@ -274,10 +266,10 @@ class _HomeScreenState extends State<HomeScreen> {
         QuickActionCard(
           icon: Icons.history,
           label: AppLocalizations.of(context)!.quickHistory,
-                  onTap: () {
-                    developer.log('Home: navigating to distributionList', name: 'HomeScreen');
-                    Navigator.pushNamed(context, AppRoutes.distributionList);
-                  },
+          onTap: () {
+            developer.log('Home: navigating to distributionList', name: 'HomeScreen');
+            Navigator.pushNamed(context, AppRoutes.distributionList);
+          },
         ),
       ],
     );

@@ -101,6 +101,36 @@ class DistributionModel extends Distribution {
     );
   }
 
+  // --- الإضافة: دالة copyWith ---
+  DistributionModel copyWith({
+    String? id,
+    String? customerId,
+    String? customerName,
+    DateTime? distributionDate,
+    List<DistributionItem>? items,
+    double? totalAmount,
+    double? paidAmount,
+    PaymentStatus? paymentStatus,
+    String? notes,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return DistributionModel(
+      id: id ?? this.id,
+      customerId: customerId ?? this.customerId,
+      customerName: customerName ?? this.customerName,
+      distributionDate: distributionDate ?? this.distributionDate,
+      items: items ?? this.items,
+      totalAmount: totalAmount ?? this.totalAmount,
+      paidAmount: paidAmount ?? this.paidAmount,
+      paymentStatus: paymentStatus ?? this.paymentStatus,
+      notes: notes ?? this.notes,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+  // -----------------------------
+
   static PaymentStatus _statusFromString(String status) {
     switch (status.toLowerCase()) {
       case 'paid':

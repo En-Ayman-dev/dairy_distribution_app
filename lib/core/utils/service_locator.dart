@@ -5,22 +5,22 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../data/datasources/local/database_helper.dart';
-import '../../data/datasources/local/customer_local_datasource.dart';
-import '../../data/datasources/local/product_local_datasource.dart';
-import '../../data/datasources/local/distribution_local_datasource.dart';
+// --- Remote Data Sources ---
 import '../../data/datasources/remote/customer_remote_datasource.dart';
 import '../../data/datasources/remote/product_remote_datasource.dart';
 import '../../data/datasources/remote/distribution_remote_datasource.dart';
+
+// --- Repositories ---
 import '../../data/repositories/customer_repository_impl.dart';
 import '../../data/repositories/product_repository_impl.dart';
 import '../../data/repositories/distribution_repository_impl.dart';
+
+// --- Domain Interfaces ---
 import '../../domain/repositories/customer_repository.dart';
 import '../../domain/repositories/product_repository.dart';
 import '../../domain/repositories/distribution_repository.dart';
-import 'package:logger/logger.dart';
-import '../../core/network/network_info.dart';
-import '../../core/network/sync_manager.dart';
+
+// --- ViewModels ---
 import '../../presentation/viewmodels/auth_viewmodel.dart';
 import '../../presentation/viewmodels/customer_viewmodel.dart';
 import '../../presentation/viewmodels/product_viewmodel.dart';
@@ -30,28 +30,18 @@ import '../../presentation/viewmodels/report_viewmodel.dart';
 final getIt = GetIt.instance;
 
 Future<void> setupServiceLocator() async {
-  // External
+  // ---------------------------------------------------------------------------
+  // 1. External Services
+  // ---------------------------------------------------------------------------
   getIt.registerLazySingleton(() => FirebaseFirestore.instance);
   getIt.registerLazySingleton(() => FirebaseAuth.instance);
   getIt.registerLazySingleton(() => Connectivity());
   getIt.registerLazySingleton(() => InternetConnectionChecker());
   getIt.registerLazySingleton(() => Uuid());
 
-  // Database
-  getIt.registerLazySingleton(() => DatabaseHelper.instance);
-
-  // Local Data Sources
-  getIt.registerLazySingleton<CustomerLocalDataSource>(
-    () => CustomerLocalDataSourceImpl(getIt()),
-  );
-  getIt.registerLazySingleton<ProductLocalDataSource>(
-    () => ProductLocalDataSourceImpl(getIt()),
-  );
-  getIt.registerLazySingleton<DistributionLocalDataSource>(
-    () => DistributionLocalDataSourceImpl(getIt()),
-  );
-
-  // Remote Data Sources
+  // ---------------------------------------------------------------------------
+  // 2. Data Sources (Remote Only)
+  // ---------------------------------------------------------------------------
   getIt.registerLazySingleton<CustomerRemoteDataSource>(
     () => CustomerRemoteDataSourceImpl(getIt()),
   );
@@ -62,48 +52,40 @@ Future<void> setupServiceLocator() async {
     () => DistributionRemoteDataSourceImpl(getIt()),
   );
 
-  // Network & Sync
-  getIt.registerLazySingleton<NetworkInfo>(
-    () => NetworkInfoImpl(getIt(), getIt()),
-  );
-  getIt.registerLazySingleton(() => SyncManager(
-        databaseHelper: getIt(),
-        networkInfo: getIt(),
-        logger: Logger(),
-      ));
+  // * Note: Local DataSources and SyncManager have been removed *
 
-  // Repositories
+  // ---------------------------------------------------------------------------
+  // 3. Repositories
+  // ---------------------------------------------------------------------------
   getIt.registerLazySingleton<CustomerRepository>(() => CustomerRepositoryImpl(
-        localDataSource: getIt(),
         remoteDataSource: getIt(),
-        networkInfo: getIt(),
-        syncManager: getIt(),
         firebaseAuth: getIt(),
       ));
 
   getIt.registerLazySingleton<ProductRepository>(() => ProductRepositoryImpl(
-        localDataSource: getIt(),
         remoteDataSource: getIt(),
-        networkInfo: getIt(),
-        syncManager: getIt(),
         firebaseAuth: getIt(),
       ));
 
   getIt.registerLazySingleton<DistributionRepository>(() => DistributionRepositoryImpl(
-        localDataSource: getIt(),
         remoteDataSource: getIt(),
-        customerLocalDataSource: getIt(),
-        productLocalDataSource: getIt(),
-        networkInfo: getIt(),
-        syncManager: getIt(),
+        // تم إضافة الاعتمادات الجديدة للتعامل مع العلاقات عن بعد
+        customerRemoteDataSource: getIt(),
+        productRemoteDataSource: getIt(),
         firebaseAuth: getIt(),
       ));
 
-  // ViewModels
+  // ---------------------------------------------------------------------------
+  // 4. ViewModels
+  // ---------------------------------------------------------------------------
   getIt.registerFactory(() => AuthViewModel(getIt()));
+  
+  // نفترض أن CustomerViewModel يعتمد على الواجهة (Interface) للمستودع، لذا لا نحتاج لتغيير هذا
   getIt.registerFactory(() => CustomerViewModel(getIt(), getIt(), getIt<DistributionRepository>()));
+  
   getIt.registerFactory(() => ProductViewModel(getIt(), getIt()));
   getIt.registerFactory(() => DistributionViewModel(getIt(), getIt()));
+  
   getIt.registerFactory(() => ReportViewModel(
         getIt<DistributionRepository>(),
         getIt<CustomerRepository>(),

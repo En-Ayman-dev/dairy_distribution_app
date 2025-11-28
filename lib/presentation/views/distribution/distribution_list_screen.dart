@@ -1,4 +1,3 @@
-
 // ignore_for_file: use_build_context_synchronously, deprecated_member_use
 
 import 'package:flutter/material.dart';
@@ -7,14 +6,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:developer' as developer;
 import 'package:provider/provider.dart';
 import '../../../core/utils/service_locator.dart';
-import '../../../data/datasources/local/distribution_local_datasource.dart';
+// --- تم حذف استيرادات LocalDataSource ---
 import '../../viewmodels/distribution_viewmodel.dart';
-import 'package:uuid/uuid.dart';
-import '../../../data/models/customer_model.dart';
-import '../../../data/models/product_model.dart';
-import '../../../domain/entities/product.dart';
-import '../../../data/datasources/local/customer_local_datasource.dart';
-import '../../../data/datasources/local/product_local_datasource.dart';
+// --- إضافة استيراد المستودع للوصول لبيانات العميل أثناء الطباعة ---
+import '../../../domain/repositories/customer_repository.dart';
 import '../../../domain/entities/distribution.dart';
 import '../../../domain/entities/distribution_item.dart';
 import '../../../core/utils/pdf_generator.dart';
@@ -35,7 +30,6 @@ class _DistributionListScreenState extends State<DistributionListScreen> {
   void initState() {
     super.initState();
     developer.log('DistributionListScreen: initState', name: 'DistributionListScreen');
-    // Trigger load of distributions from the viewmodel (local first, then remote)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       try {
         context.read<DistributionViewModel>().loadDistributions();
@@ -52,6 +46,7 @@ class _DistributionListScreenState extends State<DistributionListScreen> {
     super.dispose();
   }
 
+  // هذه الدالة لا تزال تعمل لأنها تستخدم Firestore SDK مباشرة للتحقق، وهو أمر مقبول للـ Debugging
   Future<void> _testFirestoreAccess(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
     final t = AppLocalizations.of(context)!;
@@ -115,124 +110,7 @@ class _DistributionListScreenState extends State<DistributionListScreen> {
     }
   }
 
-  Future<void> _showLocalDbCount(BuildContext context) async {
-    try {
-      final localDs = getIt<DistributionLocalDataSource>();
-      final list = await localDs.getAllDistributions();
-      final t = AppLocalizations.of(context)!;
-      final content = list.isEmpty
-          ? '${t.localDbDistributions}: 0'
-          : '${t.localDbDistributions}: ${list.length} distributions. First id: ${list.first.id}';
-      if (!mounted) return;
-      showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(t.localDbDistributions),
-          content: Text(content),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(t.ok)),
-          ],
-        ),
-      );
-    } catch (e, st) {
-      developer.log('Error reading local DB', name: 'DistributionListScreen', error: e);
-      final t = AppLocalizations.of(context)!;
-      if (!mounted) return;
-      showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(t.localDbError),
-          content: SingleChildScrollView(child: Text('$e\n$st')),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(t.ok)),
-          ],
-        ),
-      );
-    }
-  }
-
-  Future<void> _createTestDistribution(BuildContext context) async {
-    developer.log('Create test distribution requested', name: 'DistributionListScreen');
-    final t = AppLocalizations.of(context)!;
-    try {
-      final customerDs = getIt<CustomerLocalDataSource>();
-      final productDs = getIt<ProductLocalDataSource>();
-      final vm = context.read<DistributionViewModel>();
-
-      // Ensure at least one customer
-      var customers = await customerDs.getAllCustomers();
-      if (customers.isEmpty) {
-        final id = const Uuid().v4();
-        final now = DateTime.now();
-        final testCustomer = CustomerModel(
-          id: id,
-          name: 'Test Customer',
-          phone: '0000000000',
-          createdAt: now,
-          updatedAt: now,
-        );
-        await customerDs.insertCustomer(testCustomer);
-        customers = [testCustomer];
-        developer.log('Inserted test customer: $id', name: 'DistributionListScreen');
-      }
-
-      // Ensure at least one product
-      var products = await productDs.getAllProducts();
-      if (products.isEmpty) {
-        final id = const Uuid().v4();
-        final now = DateTime.now();
-        final testProduct = ProductModel(
-          id: id,
-          name: 'Test Milk',
-          category: ProductCategory.milk,
-          unit: 'L',
-          price: 30.0,
-          createdAt: now,
-          updatedAt: now,
-        );
-        await productDs.insertProduct(testProduct);
-        products = [testProduct];
-        developer.log('Inserted test product: $id', name: 'DistributionListScreen');
-      }
-
-      final customer = customers.first;
-      final product = products.first;
-
-      // Add item to viewmodel current items and create distribution
-      vm.addItem(
-        productId: product.id,
-        productName: product.name,
-        quantity: 1.0,
-        price: product.price,
-      );
-
-      final ok = await vm.createDistribution(
-        customerId: customer.id,
-        customerName: customer.name,
-        distributionDate: DateTime.now(),
-      );
-      if (!mounted) return;
-      showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(t.createTestDistribution),
-          content: Text(ok ? t.createTestDistributionSuccess : '${t.createTestDistributionFailedPrefix} ${vm.errorMessage}'),
-          actions: [TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(t.ok))],
-        ),
-      );
-    } catch (e, st) {
-      developer.log('Error creating test distribution', name: 'DistributionListScreen', error: e);
-      if (!mounted) return;
-      showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(t.unexpectedError),
-          content: SingleChildScrollView(child: Text('$e\n$st')),
-          actions: [TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(t.ok))],
-        ),
-      );
-    }
-  }
+  // --- تم حذف _showLocalDbCount و _createTestDistribution لأنهما يعتمدان على Local DB المحذوف ---
 
   @override
   Widget build(BuildContext context) {
@@ -270,18 +148,7 @@ class _DistributionListScreenState extends State<DistributionListScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(AppLocalizations.of(context)!.noDistributionsToShow),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    onPressed: () => _showLocalDbCount(context),
-                    icon: const Icon(Icons.storage),
-                    label: Text(AppLocalizations.of(context)!.showLocalDbDistributions),
-                  ),
-                      const SizedBox(height: 8),
-                      ElevatedButton.icon(
-                        onPressed: () => _createTestDistribution(context),
-                        icon: const Icon(Icons.add),
-                        label: Text(AppLocalizations.of(context)!.createTestDistribution),
-                      ),
+                  // تم إزالة أزرار الاختبار المحلية
                 ],
               ),
             );
@@ -302,7 +169,6 @@ class _DistributionListScreenState extends State<DistributionListScreen> {
                     mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      // Make the amount text flexible and ellipsize if it's too long
                       Flexible(
                         child: Text(
                           'ريال${dist.totalAmount.toStringAsFixed(2)}',
@@ -312,7 +178,6 @@ class _DistributionListScreenState extends State<DistributionListScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      // Use compact icon buttons to save horizontal space
                       IconButton(
                         tooltip: printTooltip,
                         icon: const Icon(Icons.print),
@@ -341,7 +206,6 @@ class _DistributionListScreenState extends State<DistributionListScreen> {
                   ),
                 ),
                 onTap: () {
-                  // For now open detail screen
                   Navigator.of(context).push(MaterialPageRoute(builder: (_) => DistributionDetailScreen(distribution: dist)));
                 },
               );
@@ -420,11 +284,19 @@ class _DistributionListScreenState extends State<DistributionListScreen> {
       await vm.getDistributionById(dist.id);
       final distribution = vm.selectedDistribution ?? dist;
 
-      // Load customer details from local datasource
-      final customerDs = getIt<CustomerLocalDataSource>();
-      final customer = await customerDs.getCustomerById(distribution.customerId);
+      // --- تعديل جوهري: استخدام المستودع بدلاً من مصدر البيانات المحلي ---
+      final customerRepo = getIt<CustomerRepository>();
+      final customerResult = await customerRepo.getCustomerById(distribution.customerId);
+      
+      // التعامل مع نتيجة Either
+      final customer = customerResult.fold(
+        (failure) => null, 
+        (customer) => customer
+      );
+      // -------------------------------------------------------------
+
       if (customer == null) {
-        messenger.showSnackBar(SnackBar(content: Text('Customer not found')));
+        messenger.showSnackBar(const SnackBar(content: Text('Customer not found')));
         return;
       }
 
@@ -493,18 +365,12 @@ class _DistributionListScreenState extends State<DistributionListScreen> {
 
   Future<void> _showEditDialog(Distribution dist) async {
     final vm = context.read<DistributionViewModel>();
-    // Show a dedicated stateful dialog widget which owns its controllers
-    // and disposes them in its own State.dispose(). This prevents the
-    // "used after disposed" error that occurs when controllers are
-    // disposed after the dialog returns while the framework still tries
-    // to rebuild widgets using them.
     await showDialog<bool>(
       context: context,
       builder: (ctx) => EditDistributionDialog(distribution: dist, viewModel: vm),
     );
     return;
   }
-
 }
 
 class EditDistributionDialog extends StatefulWidget {
@@ -622,7 +488,7 @@ class _EditDistributionDialogState extends State<EditDistributionDialog> {
               controller: notesController,
               keyboardType: TextInputType.text,
               maxLines: 3,
-              decoration: InputDecoration(labelText: 'ملاحظات'),
+              decoration: const InputDecoration(labelText: 'ملاحظات'),
             ),
             const SizedBox(height: 8),
             Builder(builder: (__) {

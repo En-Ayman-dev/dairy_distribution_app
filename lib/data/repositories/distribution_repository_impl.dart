@@ -1,37 +1,29 @@
+// ignore_for_file: unused_import
+
 import 'package:dartz/dartz.dart';
 import '../../domain/entities/distribution.dart';
+import '../../domain/entities/distribution_item.dart';
 import '../../domain/repositories/distribution_repository.dart';
 import '../../core/errors/failures.dart';
-import '../../core/network/network_info.dart';
-import '../datasources/local/distribution_local_datasource.dart';
 import '../datasources/remote/distribution_remote_datasource.dart';
-import '../datasources/local/customer_local_datasource.dart';
-import '../datasources/local/product_local_datasource.dart';
+import '../datasources/remote/customer_remote_datasource.dart';
+import '../datasources/remote/product_remote_datasource.dart';
 import '../models/distribution_model.dart';
-// --- إضافة جديدة ---
-// نحتاج هذا الملف لتحويل العميل المحدث إلى JSON للمزامنة
-import '../models/customer_model.dart'; 
-// --- نهاية الإضافة ---
-import '../../core/network/sync_manager.dart';
+// لا نحتاج لاستيراد نماذج المنتج والعميل بشكل صريح إذا كانت تأتي من Datasources،
+// ولكن للتأكد من copyWith، يفترض أن النماذج تعرف خصائصها.
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:developer' as developer;
 
 class DistributionRepositoryImpl implements DistributionRepository {
-  final DistributionLocalDataSource localDataSource;
   final DistributionRemoteDataSource remoteDataSource;
-  final CustomerLocalDataSource customerLocalDataSource;
-  final ProductLocalDataSource productLocalDataSource;
-  final NetworkInfo networkInfo;
-  final SyncManager syncManager;
+  final CustomerRemoteDataSource customerRemoteDataSource;
+  final ProductRemoteDataSource productRemoteDataSource;
   final FirebaseAuth firebaseAuth;
 
   DistributionRepositoryImpl({
-    required this.localDataSource,
     required this.remoteDataSource,
-    required this.customerLocalDataSource,
-    required this.productLocalDataSource,
-    required this.networkInfo,
-    required this.syncManager,
+    required this.customerRemoteDataSource,
+    required this.productRemoteDataSource,
     required this.firebaseAuth,
   });
 
@@ -40,364 +32,201 @@ class DistributionRepositoryImpl implements DistributionRepository {
 
   @override
   Future<Either<Failure, List<Distribution>>> getAllDistributions() async {
+    if (!_isAuthenticated) {
+      return Left(AuthenticationFailure('User not authenticated'));
+    }
     try {
-      developer.log('getAllDistributions called', name: 'DistributionRepository');
-      final localDistributions = await localDataSource.getAllDistributions();
-
-      if (await networkInfo.isConnected) {
-        try {
-          if (!_isAuthenticated) {
-            return Right(localDistributions);
-          }
-          final remoteDistributions = await remoteDataSource.getAllDistributions(_userId);
-
-          if (remoteDistributions.isEmpty && localDistributions.isNotEmpty) {
-            developer.log('Remote empty, preserving local distributions', name: 'DistributionRepository');
-            return Right(localDistributions);
-          }
-
-          for (var distribution in remoteDistributions) {
-            // Prevent overwriting newer local changes with older remote data.
-            final localDist = await localDataSource.getDistributionById(distribution.id);
-            if (localDist == null || distribution.updatedAt.isAfter(localDist.updatedAt)) {
-              await localDataSource.insertDistribution(distribution);
-            } else {
-              developer.log('Skipping remote distribution ${distribution.id} because local is newer', name: 'DistributionRepository');
-            }
-          }
-          return Right(remoteDistributions);
-        } catch (e) {
-          developer.log('Remote fetch distributions failed', name: 'DistributionRepository', error: e);
-          return Right(localDistributions);
-        }
-      }
-
-      return Right(localDistributions);
+      final remoteDistributions = await remoteDataSource.getAllDistributions(_userId);
+      // Enrich distributions with missing customer/product names when necessary
+      final enriched = await Future.wait<Distribution>(remoteDistributions.map((d) => _enrichDistributionWithNames(d)).toList());
+      return Right(enriched);
     } catch (e) {
-      return Left(DatabaseFailure('Failed to fetch distributions'));
+      return Left(ServerFailure(e.toString()));
     }
   }
 
   @override
   Future<Either<Failure, Distribution>> getDistributionById(String id) async {
+    if (!_isAuthenticated) {
+      return Left(AuthenticationFailure('User not authenticated'));
+    }
     try {
-      final distribution = await localDataSource.getDistributionById(id);
-      
-      if (distribution == null) {
-        return Left(NotFoundFailure('Distribution not found'));
-      }
-
-      return Right(distribution);
+      final distribution = await remoteDataSource.getDistributionById(_userId, id);
+      final enriched = await _enrichDistributionWithNames(distribution);
+      return Right(enriched);
     } catch (e) {
-      return Left(UnexpectedFailure(e.toString()));
+      return Left(NotFoundFailure('Distribution not found'));
     }
   }
 
   @override
-  Future<Either<Failure, List<Distribution>>> getDistributionsByCustomer(
-    String customerId,
-  ) async {
+  Future<Either<Failure, List<Distribution>>> getDistributionsByCustomer(String customerId) async {
+    if (!_isAuthenticated) {
+      return Left(AuthenticationFailure('User not authenticated'));
+    }
     try {
-      final distributions =
-          await localDataSource.getDistributionsByCustomer(customerId);
-      return Right(distributions);
+      final allDistributions = await remoteDataSource.getAllDistributions(_userId);
+      final customerDistributions = allDistributions.where((d) => d.customerId == customerId).toList();
+      final enriched = await Future.wait<Distribution>(customerDistributions.map((d) => _enrichDistributionWithNames(d)).toList());
+      return Right(enriched);
     } catch (e) {
-      return Left(DatabaseFailure('Failed to fetch customer distributions'));
+      return Left(ServerFailure('Failed to fetch customer distributions'));
     }
   }
 
   @override
-  Future<Either<Failure, List<Distribution>>> getDistributionsByDateRange(
-    DateTime start,
-    DateTime end,
-  ) async {
+  Future<Either<Failure, List<Distribution>>> getDistributionsByDateRange(DateTime start, DateTime end) async {
+    if (!_isAuthenticated) {
+      return Left(AuthenticationFailure('User not authenticated'));
+    }
     try {
-      final distributions =
-          await localDataSource.getDistributionsByDateRange(start, end);
-      return Right(distributions);
+      final allDistributions = await remoteDataSource.getAllDistributions(_userId);
+      final rangeDistributions = allDistributions.where((d) {
+        return d.distributionDate.isAfter(start.subtract(const Duration(days: 1))) && 
+               d.distributionDate.isBefore(end.add(const Duration(days: 1)));
+      }).toList();
+      final enriched = await Future.wait<Distribution>(rangeDistributions.map((d) => _enrichDistributionWithNames(d)).toList());
+      return Right(enriched);
     } catch (e) {
-      return Left(DatabaseFailure('Failed to fetch distributions by date range'));
+      return Left(ServerFailure('Failed to fetch distributions by date range'));
     }
   }
 
-  // (*** تم تعديل هذه الدالة ***)
   @override
-  Future<Either<Failure, String>> createDistribution(
-    Distribution distribution,
-  ) async {
+  Future<Either<Failure, String>> createDistribution(Distribution distribution) async {
+    if (!_isAuthenticated) {
+      return Left(AuthenticationFailure('User not authenticated'));
+    }
     try {
-      final distributionModel = DistributionModel.fromEntity(distribution);
-      
-      // 1. Insert distribution
-      await localDataSource.insertDistribution(distributionModel);
-
-      // 2. Update product stocks
+      // 1. Update Product Stocks (Remote)
       for (var item in distribution.items) {
-        final product = await productLocalDataSource.getProductById(item.productId);
-        if (product != null) {
-          await productLocalDataSource.updateProductStock(
-            item.productId,
-            product.stock - item.quantity,
-          );
-        }
+        final productModel = await productRemoteDataSource.getProductById(_userId, item.productId);
+        
+        // تصحيح: استخدام .stock بدلاً من .currentStock
+        final updatedStock = productModel.stock - item.quantity;
+        
+        // تصحيح: استخدام معامل stock في copyWith
+        final updatedProduct = productModel.copyWith(stock: updatedStock);
+        
+        await productRemoteDataSource.updateProduct(_userId, updatedProduct);
       }
 
-      // 3. Update customer balance (المحلي)
-      final customer =
-          await customerLocalDataSource.getCustomerById(distribution.customerId);
-      if (customer != null) {
-        await customerLocalDataSource.updateCustomerBalance(
-          distribution.customerId,
-          customer.balance + distribution.pendingAmount,
-        );
-      }
-
-      // 4. Queue distribution for sync
-      await syncManager.queueSync(
-        entityType: 'distribution',
-        entityId: distribution.id,
-        operation: 'create',
-        data: distributionModel.toJson(),
-      );
-
-      // --- 5. الإضافة الجديدة (إصلاح الخلل): مزامنة العميل ---
-      // جلب العميل (الآن برصيده المحدث) من قاعدة البيانات المحلية
-      final updatedCustomer =
-          await customerLocalDataSource.getCustomerById(distribution.customerId);
+      // 2. Update Customer Balance (Remote)
+      final customerModel = await customerRemoteDataSource.getCustomerById(_userId, distribution.customerId);
+      final updatedBalance = customerModel.balance + distribution.pendingAmount;
+      final updatedCustomer = customerModel.copyWith(balance: updatedBalance);
       
-      if (updatedCustomer != null) {
-        // وضعه في طابور المزامنة
-        await syncManager.queueSync(
-          entityType: 'customer',
-          entityId: updatedCustomer.id,
-          operation: 'update', // تحديد العملية كـ "تحديث"
-          data: CustomerModel.fromEntity(updatedCustomer)
-              .toJson(), // تحويله إلى JSON
-        );
-      }
-      // --- نهاية الإضافة ---
+      await customerRemoteDataSource.updateCustomer(_userId, updatedCustomer);
 
-
-      if (await networkInfo.isConnected) {
-        try {
-          if (_isAuthenticated) {
-            await remoteDataSource.createDistribution(_userId, distributionModel);
-            await syncManager.markAsSynced('distribution', distribution.id);
-          }
-        } catch (e) {
-          // Will be synced later
-        }
-      }
+      // 3. Create Distribution (Remote)
+      final distributionModel = DistributionModel.fromEntity(distribution);
+      await remoteDataSource.createDistribution(_userId, distributionModel);
 
       return Right(distribution.id);
     } catch (e) {
-      return Left(DatabaseFailure('Failed to create distribution'));
+      return Left(ServerFailure('Failed to create distribution: $e'));
     }
   }
 
   @override
-  Future<Either<Failure, void>> updateDistribution(
-    Distribution distribution,
-  ) async {
+  Future<Either<Failure, void>> updateDistribution(Distribution distribution) async {
+    if (!_isAuthenticated) {
+      return Left(AuthenticationFailure('User not authenticated'));
+    }
     try {
       final distributionModel = DistributionModel.fromEntity(distribution);
-      
-      await localDataSource.updateDistribution(distributionModel);
-
-      await syncManager.queueSync(
-        entityType: 'distribution',
-        entityId: distribution.id,
-        operation: 'update',
-        data: distributionModel.toJson(),
-      );
-
-      if (await networkInfo.isConnected) {
-        try {
-          if (_isAuthenticated) {
-            await remoteDataSource.updateDistribution(_userId, distributionModel);
-            await syncManager.markAsSynced('distribution', distribution.id);
-          }
-        } catch (e) {
-          // Will be synced later
-        }
-      }
-
+      await remoteDataSource.updateDistribution(_userId, distributionModel);
       return const Right(null);
     } catch (e) {
-      return Left(DatabaseFailure('Failed to update distribution'));
+      return Left(ServerFailure('Failed to update distribution'));
     }
   }
 
-  // (*** تم تعديل هذه الدالة ***)
   @override
   Future<Either<Failure, void>> deleteDistribution(String id) async {
+    if (!_isAuthenticated) {
+      return Left(AuthenticationFailure('User not authenticated'));
+    }
     try {
-      final distribution = await localDataSource.getDistributionById(id);
-      if (distribution == null) {
-        return Left(NotFoundFailure('Distribution not found'));
-      }
+      final distribution = await remoteDataSource.getDistributionById(_userId, id);
 
+      // 1. Revert Product Stocks (Remote)
       for (var item in distribution.items) {
-        final product = await productLocalDataSource.getProductById(item.productId);
-        if (product != null) {
-          await productLocalDataSource.updateProductStock(
-            item.productId,
-            product.stock + item.quantity,
-          );
-        }
+        final productModel = await productRemoteDataSource.getProductById(_userId, item.productId);
+        // تصحيح: استخدام .stock
+        final updatedStock = productModel.stock + item.quantity; 
+        // تصحيح: استخدام stock:
+        final updatedProduct = productModel.copyWith(stock: updatedStock);
+        await productRemoteDataSource.updateProduct(_userId, updatedProduct);
       }
 
-      final customer =
-          await customerLocalDataSource.getCustomerById(distribution.customerId);
-      if (customer != null) {
-        await customerLocalDataSource.updateCustomerBalance(
-          distribution.customerId,
-          customer.balance - distribution.pendingAmount,
-        );
-      }
+      // 2. Revert Customer Balance (Remote)
+      final customerModel = await customerRemoteDataSource.getCustomerById(_userId, distribution.customerId);
+      final updatedBalance = customerModel.balance - distribution.pendingAmount;
+      final updatedCustomer = customerModel.copyWith(balance: updatedBalance);
+      await customerRemoteDataSource.updateCustomer(_userId, updatedCustomer);
 
-      await localDataSource.deleteDistribution(id);
-
-      await syncManager.queueSync(
-        entityType: 'distribution',
-        entityId: id,
-        operation: 'delete',
-        data: {'id': id},
-      );
-      
-      // --- الإضافة الجديدة (إصلاح الخلل): مزامنة العميل ---
-      final updatedCustomer =
-          await customerLocalDataSource.getCustomerById(distribution.customerId);
-      
-      if (updatedCustomer != null) {
-        await syncManager.queueSync(
-          entityType: 'customer',
-          entityId: updatedCustomer.id,
-          operation: 'update',
-          data: CustomerModel.fromEntity(updatedCustomer).toJson(),
-        );
-      }
-      // --- نهاية الإضافة ---
-
-
-      if (await networkInfo.isConnected) {
-        try {
-          if (_isAuthenticated) {
-            await remoteDataSource.deleteDistribution(_userId, id);
-            await syncManager.markAsSynced('distribution', id);
-          }
-        } catch (e) {
-          // Will be synced later
-        }
-      }
+      // 3. Delete Distribution (Remote)
+      await remoteDataSource.deleteDistribution(_userId, id);
 
       return const Right(null);
     } catch (e) {
-      return Left(DatabaseFailure('Failed to delete distribution'));
+      return Left(ServerFailure('Failed to delete distribution'));
     }
   }
 
-  // (*** تم تعديل هذه الدالة ***)
   @override
-  Future<Either<Failure, void>> recordPayment(
-    String distributionId,
-    double amount,
-  ) async {
+  Future<Either<Failure, void>> recordPayment(String distributionId, double amount) async {
+    if (!_isAuthenticated) {
+      return Left(AuthenticationFailure('User not authenticated'));
+    }
     try {
-      final distribution = await localDataSource.getDistributionById(distributionId);
-      if (distribution == null) {
-        return Left(NotFoundFailure('Distribution not found'));
-      }
+      // 1. Fetch Distribution
+      final distribution = await remoteDataSource.getDistributionById(_userId, distributionId);
+      
       final newPaidAmount = distribution.paidAmount + amount;
-      String paymentStatus = 'pending';
-
+      
+      // تصحيح: استخدام Enum بدلاً من String
+      PaymentStatus paymentStatus = PaymentStatus.pending;
       if (newPaidAmount >= distribution.totalAmount) {
-        paymentStatus = 'paid';
+        paymentStatus = PaymentStatus.paid;
       } else if (newPaidAmount > 0) {
-        paymentStatus = 'partial';
+        paymentStatus = PaymentStatus.partial;
       }
 
-      developer.log('Recording payment: dist=${distribution.id} previousPaid=${distribution.paidAmount} amount=$amount newPaid=$newPaidAmount total=${distribution.totalAmount} status=$paymentStatus', name: 'DistributionRepository');
-
-      await localDataSource.updatePaymentStatus(
-        distributionId,
-        newPaidAmount,
-        paymentStatus,
+      // استخدام copyWith الجديد الذي يقبل PaymentStatus
+      final updatedDistribution = DistributionModel.fromEntity(distribution).copyWith(
+        paidAmount: newPaidAmount,
+        paymentStatus: paymentStatus,
       );
 
-      developer.log('Updated local distribution payment status for ${distribution.id}', name: 'DistributionRepository');
+      // 2. Update Distribution (Remote)
+      await remoteDataSource.updateDistribution(_userId, updatedDistribution);
 
-      final customer =
-          await customerLocalDataSource.getCustomerById(distribution.customerId);
-      if (customer != null) {
-        developer.log('Updating customer balance: customer=${customer.id} previousBalance=${customer.balance} deduct=$amount', name: 'DistributionRepository');
-        await customerLocalDataSource.updateCustomerBalance(
-          distribution.customerId,
-          customer.balance - amount,
-        );
-        developer.log('Customer balance updated locally: customer=${customer.id}', name: 'DistributionRepository');
-      }
-
-      // --- 3. الإضافة الجديدة (إصلاح الخلل): مزامنة العميل ---
-      final updatedCustomer =
-          await customerLocalDataSource.getCustomerById(distribution.customerId);
-      if (updatedCustomer != null) {
-        final customerData = CustomerModel.fromEntity(updatedCustomer).toJson();
-        developer.log('Queueing customer sync for ${updatedCustomer.id} after payment', name: 'DistributionRepository');
-        await syncManager.queueSync(
-          entityType: 'customer',
-          entityId: updatedCustomer.id,
-          operation: 'update',
-          data: customerData,
-        );
-      }
-      // --- نهاية الإضافة ---
-
-      // Queue the distribution update for sync (so SyncManager knows about it)
-      final updatedDistribution = await localDataSource.getDistributionById(distributionId);
-      if (updatedDistribution != null) {
-        final distData = DistributionModel.fromEntity(updatedDistribution).toJson();
-        developer.log('Queueing distribution sync for ${updatedDistribution.id} after payment newPaid=${updatedDistribution.paidAmount} pending=${updatedDistribution.pendingAmount}', name: 'DistributionRepository');
-        await syncManager.queueSync(
-          entityType: 'distribution',
-          entityId: updatedDistribution.id,
-          operation: 'update',
-          data: distData,
-        );
-      }
-
-      if (await networkInfo.isConnected) {
-        try {
-          if (updatedDistribution != null) {
-            if (_isAuthenticated) {
-              developer.log('Attempting remote update for distribution ${updatedDistribution.id}', name: 'DistributionRepository');
-              await remoteDataSource.updateDistribution(
-                _userId,
-                DistributionModel.fromEntity(updatedDistribution),
-              );
-              developer.log('Remote update succeeded for distribution ${updatedDistribution.id}', name: 'DistributionRepository');
-              await syncManager.markAsSynced('distribution', updatedDistribution.id);
-            }
-          }
-        } catch (e) {
-          // Will be synced later
-        }
-      }
+      // 3. Update Customer Balance (Remote)
+      final customerModel = await customerRemoteDataSource.getCustomerById(_userId, distribution.customerId);
+      final updatedBalance = customerModel.balance - amount;
+      final updatedCustomer = customerModel.copyWith(balance: updatedBalance);
+      
+      await customerRemoteDataSource.updateCustomer(_userId, updatedCustomer);
 
       return const Right(null);
     } catch (e) {
-      return Left(DatabaseFailure('Failed to record payment'));
+      return Left(ServerFailure('Failed to record payment'));
     }
   }
 
   @override
-  Future<Either<Failure, Map<String, dynamic>>> getDistributionStats(
-    DateTime start,
-    DateTime end,
-  ) async {
+  Future<Either<Failure, Map<String, dynamic>>> getDistributionStats(DateTime start, DateTime end) async {
+    if (!_isAuthenticated) {
+      return Left(AuthenticationFailure('User not authenticated'));
+    }
     try {
-      final distributions =
-          await localDataSource.getDistributionsByDateRange(start, end);
+      final allDistributions = await remoteDataSource.getAllDistributions(_userId);
+      final distributions = allDistributions.where((d) {
+        return d.distributionDate.isAfter(start.subtract(const Duration(days: 1))) && 
+               d.distributionDate.isBefore(end.add(const Duration(days: 1)));
+      }).toList();
 
       double totalSales = 0;
       double totalPaid = 0;
@@ -418,7 +247,7 @@ class DistributionRepositoryImpl implements DistributionRepository {
         'average_sale': totalDistributions > 0 ? totalSales / totalDistributions : 0,
       });
     } catch (e) {
-      return Left(DatabaseFailure('Failed to calculate distribution stats'));
+      return Left(ServerFailure('Failed to calculate distribution stats'));
     }
   }
 
@@ -429,16 +258,62 @@ class DistributionRepositoryImpl implements DistributionRepository {
     String? customerId,
     List<String>? productIds,
   }) async {
+    if (!_isAuthenticated) {
+      return Left(AuthenticationFailure('User not authenticated'));
+    }
     try {
-      final distributions = await localDataSource.getFilteredDistributions(
-        startDate: startDate,
-        endDate: endDate,
-        customerId: customerId,
-        productIds: productIds,
-      );
-      return Right(distributions);
+      final allDistributions = await remoteDataSource.getAllDistributions(_userId);
+      
+      final filtered = allDistributions.where((d) {
+        bool matchDate = d.distributionDate.isAfter(startDate.subtract(const Duration(days: 1))) && 
+                         d.distributionDate.isBefore(endDate.add(const Duration(days: 1)));
+        bool matchCustomer = customerId == null || d.customerId == customerId;
+        
+        bool matchProduct = productIds == null || productIds.isEmpty || 
+                            d.items.any((item) => productIds.contains(item.productId));
+                            
+        return matchDate && matchCustomer && matchProduct;
+      }).toList();
+
+      final enriched = await Future.wait<Distribution>(filtered.map((d) => _enrichDistributionWithNames(d)).toList());
+      return Right(enriched);
     } catch (e) {
-      return Left(DatabaseFailure('Failed to fetch filtered distributions'));
+      return Left(ServerFailure('Failed to fetch filtered distributions'));
     }
   }
+
+  Future<Distribution> _enrichDistributionWithNames(Distribution dist) async {
+    var updated = dist;
+    try {
+      if (updated.customerName.trim().isEmpty) {
+        try {
+          final customerModel = await customerRemoteDataSource.getCustomerById(_userId, updated.customerId);
+          developer.log('Enriching distribution ${updated.id} with customer name from remote: ${customerModel.name}', name: 'DistributionRepositoryImpl');
+          updated = updated.copyWith(customerName: customerModel.name);
+        } catch (_) {}
+      }
+
+      final items = <DistributionItem>[];
+      for (var it in updated.items) {
+        if (it.productName.trim().isEmpty) {
+          try {
+            final productModel = await productRemoteDataSource.getProductById(_userId, it.productId);
+            developer.log('Enriching distribution item ${it.id} with product name: ${productModel.name}', name: 'DistributionRepositoryImpl');
+            items.add(it.copyWith(productName: productModel.name));
+          } catch (_) {
+            items.add(it);
+          }
+        } else {
+          items.add(it);
+        }
+      }
+      updated = updated.copyWith(items: items);
+    } catch (_) {
+      // ignore
+    }
+    return updated;
+  }
+
+  
+  
 }

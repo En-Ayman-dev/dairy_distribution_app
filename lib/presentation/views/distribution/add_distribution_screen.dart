@@ -1,17 +1,22 @@
-
 import 'package:flutter/material.dart';
-import '../../widgets/print_button.dart';
-import '../../../core/utils/pdf_generator.dart';
-import 'package:open_file/open_file.dart';
 import 'dart:developer' as developer;
 import 'package:provider/provider.dart';
-import '../../viewmodels/distribution_viewmodel.dart';
-import '../../../data/datasources/local/customer_local_datasource.dart';
-import '../../../data/datasources/local/product_local_datasource.dart';
-import '../../../data/models/customer_model.dart';
-import '../../../data/models/product_model.dart';
+import 'package:open_file/open_file.dart';
+
+// --- Imports: Core & Utils ---
+import '../../../core/utils/pdf_generator.dart';
 import '../../../core/utils/service_locator.dart';
 import '../../../l10n/app_localizations.dart';
+
+// --- Imports: Domain Layer (Repositories & Entities) ---
+import '../../../domain/repositories/customer_repository.dart';
+import '../../../domain/repositories/product_repository.dart';
+import '../../../domain/entities/customer.dart';
+import '../../../domain/entities/product.dart';
+
+// --- Imports: Presentation Layer ---
+import '../../viewmodels/distribution_viewmodel.dart';
+import '../../widgets/print_button.dart';
 
 class AddDistributionScreen extends StatefulWidget {
   const AddDistributionScreen({super.key});
@@ -24,10 +29,14 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
   final _qtyController = TextEditingController(text: '1');
   final _priceController = TextEditingController();
   final _paidController = TextEditingController(text: '0');
+  
   String? _selectedCustomerId;
   String? _selectedProductId;
-  List<CustomerModel> _customers = [];
-  List<ProductModel> _products = [];
+  
+  // تم تغيير النوع إلى Entity لأن المستودع يرجع Entities
+  List<Customer> _customers = [];
+  List<Product> _products = [];
+  
   bool _loading = true;
   bool _creating = false;
 
@@ -43,26 +52,57 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
     });
   }
 
+  // --- تم تعديل هذه الدالة لاستخدام المستودعات بدلاً من LocalDataSource ---
   Future<void> _loadLookups() async {
+    setState(() => _loading = true);
     try {
-      final customerDs = getIt<CustomerLocalDataSource>();
-      final productDs = getIt<ProductLocalDataSource>();
-      final customers = await customerDs.getAllCustomers();
-      final products = await productDs.getAllProducts();
+      final customerRepo = getIt<CustomerRepository>();
+      final productRepo = getIt<ProductRepository>();
+
+      // جلب البيانات بشكل متوازي لتقليل وقت الانتظار
+      final results = await Future.wait([
+        customerRepo.getAllCustomers(),
+        productRepo.getAllProducts(),
+      ]);
+
+      final customerResult = results[0] as dynamic; // Dart inference helper
+      final productResult = results[1] as dynamic;
+
+      if (!mounted) return;
+
       setState(() {
-        _customers = customers;
-        _products = products;
+        // معالجة نتيجة العملاء
+        customerResult.fold(
+          (failure) {
+             developer.log('Failed to load customers: ${failure.message}');
+             _customers = [];
+          },
+          (data) => _customers = data as List<Customer>,
+        );
+
+        // معالجة نتيجة المنتجات
+        productResult.fold(
+          (failure) {
+             developer.log('Failed to load products: ${failure.message}');
+             _products = [];
+          },
+          (data) => _products = data as List<Product>,
+        );
+
+        // تعيين القيم الافتراضية
         if (_customers.isNotEmpty) _selectedCustomerId ??= _customers.first.id;
-        if (_products.isNotEmpty) _selectedProductId ??= _products.first.id;
-          // preset price for initially selected product
-          if (_selectedProductId != null) {
-            final p = _products.firstWhere((p) => p.id == _selectedProductId);
-            _priceController.text = p.price.toString();
-          }
+        if (_products.isNotEmpty) {
+           _selectedProductId ??= _products.first.id;
+           // preset price for initially selected product
+           final p = _products.first;
+           _priceController.text = p.price.toString();
+        }
+        
         _loading = false;
       });
     } catch (e) {
-      setState(() => _loading = false);
+      developer.log('Error loading lookups', error: e);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -77,11 +117,16 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
   void _addItem() {
     final vm = context.read<DistributionViewModel>();
     if (_selectedProductId == null) return;
+    
+    // البحث في قائمة المنتجات
     final product = _products.firstWhere((p) => p.id == _selectedProductId);
+    
     final qty = double.tryParse(_qtyController.text) ?? 0.0;
     if (qty <= 0) return;
     final price = double.tryParse(_priceController.text) ?? product.price;
+    
     vm.addItem(productId: product.id, productName: product.name, quantity: qty, price: price);
+    
     // reset qty to 1 and price back to product default
     _qtyController.text = '1';
     _priceController.text = product.price.toString();
@@ -102,12 +147,15 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
     vm.setPaidAmount(paid);
 
     setState(() => _creating = true);
+    
     final customer = _customers.firstWhere((c) => c.id == _selectedCustomerId);
+    
     final ok = await vm.createDistribution(
       customerId: customer.id,
       customerName: customer.name,
       distributionDate: DateTime.now(),
     );
+    
     setState(() => _creating = false);
 
     if (!mounted) return;
@@ -177,7 +225,7 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                         const SizedBox(width: 8),
                         SizedBox(width: 80, child: TextField(controller: _qtyController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: t.quantityLabel))),
                         const SizedBox(width: 8),
-                        SizedBox(width: 90, child: TextField(controller: _priceController, keyboardType: TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Price'))),
+                        SizedBox(width: 90, child: TextField(controller: _priceController, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Price'))),
                         const SizedBox(width: 8),
                         ElevatedButton(onPressed: _addItem, child: Text(t.add)),
                       ],
@@ -212,7 +260,7 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                     const SizedBox(height: 12),
                     Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(t.currentStockPrefix), Consumer<DistributionViewModel>(builder: (c, vm, _) => Text(vm.getCurrentTotal().toStringAsFixed(2)))]),
                     const SizedBox(height: 8),
-                    TextField(controller: _paidController, keyboardType: TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: t.paid)),
+                    TextField(controller: _paidController, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: t.paid)),
                     const SizedBox(height: 16),
                     // Print button is shown only after successful save
                     Consumer<DistributionViewModel>(
@@ -246,6 +294,7 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
     );
     
   }
+  
   Future<void> _printInvoice(PrinterSize size, PrintOutput output, bool preview) async {
     final vm = context.read<DistributionViewModel>();
     final customer = _customers.firstWhere((c) => c.id == _selectedCustomerId);
@@ -315,8 +364,6 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
       }
     } else {
       // هنا يمكن ربط منطق الطباعة الحرارية الفعلية لاحقاً
-      // حالياً نعرض رسالة فقط
     }
   }
 }
-

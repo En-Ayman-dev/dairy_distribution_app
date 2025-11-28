@@ -2,26 +2,17 @@ import 'package:dartz/dartz.dart';
 import '../../domain/entities/product.dart';
 import '../../domain/repositories/product_repository.dart';
 import '../../core/errors/failures.dart';
-import '../../core/network/network_info.dart';
-import '../datasources/local/product_local_datasource.dart';
 import '../datasources/remote/product_remote_datasource.dart';
 import '../models/product_model.dart';
-import '../../core/network/sync_manager.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:developer' as developer;
 
 class ProductRepositoryImpl implements ProductRepository {
-  final ProductLocalDataSource localDataSource;
   final ProductRemoteDataSource remoteDataSource;
-  final NetworkInfo networkInfo;
-  final SyncManager syncManager;
   final FirebaseAuth firebaseAuth;
 
   ProductRepositoryImpl({
-    required this.localDataSource,
     required this.remoteDataSource,
-    required this.networkInfo,
-    required this.syncManager,
     required this.firebaseAuth,
   });
 
@@ -30,204 +21,131 @@ class ProductRepositoryImpl implements ProductRepository {
 
   @override
   Future<Either<Failure, List<Product>>> getAllProducts() async {
+    if (!_isAuthenticated) {
+      return Left(AuthenticationFailure('User not authenticated'));
+    }
     try {
-      developer.log('getAllProducts called', name: 'ProductRepository');
-      developer.log('currentUser uid', name: 'ProductRepository', error: firebaseAuth.currentUser?.uid);
-      final localProducts = await localDataSource.getAllProducts();
-
-      if (await networkInfo.isConnected) {
-        try {
-          developer.log('Attempting remote fetch for products', name: 'ProductRepository');
-          developer.log('userId', name: 'ProductRepository', error: _userId);
-          if (!_isAuthenticated) {
-            return Right(localProducts);
-          }
-          final remoteProducts = await remoteDataSource.getAllProducts(_userId);
-
-          // If remote returned no results but local has data, keep local to avoid
-          // wiping the UI with an empty remote result.
-          if (remoteProducts.isEmpty && localProducts.isNotEmpty) {
-            developer.log('Remote empty, preserving local products', name: 'ProductRepository');
-            return Right(localProducts);
-          }
-
-          for (var product in remoteProducts) {
-            await localDataSource.insertProduct(product);
-          }
-          return Right(remoteProducts);
-        } catch (e) {
-          developer.log('Remote fetch products failed', name: 'ProductRepository', error: e);
-          return Right(localProducts);
-        }
-      }
-
-      return Right(localProducts);
+      developer.log('getAllProducts called (Remote Only)', name: 'ProductRepository');
+      final remoteProducts = await remoteDataSource.getAllProducts(_userId);
+      return Right(remoteProducts);
     } catch (e) {
-      return Left(DatabaseFailure('Failed to fetch products'));
+      developer.log('Failed to fetch products from remote', error: e, name: 'ProductRepository');
+      return Left(ServerFailure(e.toString()));
     }
   }
 
   @override
   Future<Either<Failure, Product>> getProductById(String id) async {
+    if (!_isAuthenticated) {
+      return Left(AuthenticationFailure('User not authenticated'));
+    }
     try {
-      developer.log('getProductById called', name: 'ProductRepository');
-      developer.log('currentUser uid', name: 'ProductRepository', error: firebaseAuth.currentUser?.uid);
-      final product = await localDataSource.getProductById(id);
-      
-      if (product == null) {
-        if (await networkInfo.isConnected) {
-          try {
-            developer.log('Attempting remote getProductById', name: 'ProductRepository', error: _userId);
-            if (!_isAuthenticated) {
-              return Left(AuthenticationFailure('User not authenticated'));
-            }
-            final remoteProduct = await remoteDataSource.getProductById(_userId, id);
-            await localDataSource.insertProduct(remoteProduct);
-            return Right(remoteProduct);
-          } catch (e) {
-            developer.log('Remote getProductById failed', name: 'ProductRepository', error: e);
-            return Left(NotFoundFailure('Product not found'));
-          }
-        }
-        return Left(NotFoundFailure('Product not found'));
-      }
-
-      return Right(product);
+      final remoteProduct = await remoteDataSource.getProductById(_userId, id);
+      return Right(remoteProduct);
     } catch (e) {
-      return Left(UnexpectedFailure(e.toString()));
+      return Left(NotFoundFailure('Product not found'));
     }
   }
 
   @override
-  Future<Either<Failure, List<Product>>> getProductsByCategory(
-    String category,
-  ) async {
+  Future<Either<Failure, List<Product>>> getProductsByCategory(String category) async {
+    if (!_isAuthenticated) {
+      return Left(AuthenticationFailure('User not authenticated'));
+    }
     try {
-      final products = await localDataSource.getProductsByCategory(category);
-      return Right(products);
+      // In-Memory filtering
+      final allProducts = await remoteDataSource.getAllProducts(_userId);
+      // استخدام المقارنة النصية لأن Category في الكائن قد تكون Enum أو String حسب التنفيذ
+      // هنا نعتمد على أن التحويل تم في Model
+      final filteredProducts = allProducts.where((p) => p.category.toString().split('.').last == category.toLowerCase() || p.category.toString() == category).toList();
+      return Right(filteredProducts);
     } catch (e) {
-      return Left(DatabaseFailure('Failed to fetch products by category'));
+      return Left(ServerFailure('Failed to fetch products by category'));
     }
   }
 
   @override
   Future<Either<Failure, List<Product>>> getLowStockProducts() async {
+    if (!_isAuthenticated) {
+      return Left(AuthenticationFailure('User not authenticated'));
+    }
     try {
-      final products = await localDataSource.getLowStockProducts();
-      return Right(products);
+      final allProducts = await remoteDataSource.getAllProducts(_userId);
+      
+      final lowStockProducts = allProducts.where((p) {
+        // --- تصحيح الخطأ هنا ---
+        // استخدام p.stock بدلاً من p.currentStock
+        // ومقارنتها بـ p.minStock الموجودة في النموذج
+        return p.stock <= p.minStock; 
+      }).toList();
+      
+      return Right(lowStockProducts);
     } catch (e) {
-      return Left(DatabaseFailure('Failed to fetch low stock products'));
+      return Left(ServerFailure('Failed to fetch low stock products'));
     }
   }
 
   @override
   Future<Either<Failure, String>> addProduct(Product product) async {
+    if (!_isAuthenticated) {
+      return Left(AuthenticationFailure('User not authenticated'));
+    }
     try {
       final productModel = ProductModel.fromEntity(product);
-      
-      await localDataSource.insertProduct(productModel);
-
-      await syncManager.queueSync(
-        entityType: 'product',
-        entityId: product.id,
-        operation: 'create',
-        data: productModel.toJson(),
-      );
-
-      if (await networkInfo.isConnected) {
-        try {
-          if (_isAuthenticated) {
-            await remoteDataSource.addProduct(_userId, productModel);
-            await syncManager.markAsSynced('product', product.id);
-          }
-        } catch (e) {
-          // Will be synced later
-        }
-      }
-
+      await remoteDataSource.addProduct(_userId, productModel);
       return Right(product.id);
     } catch (e) {
-      return Left(DatabaseFailure('Failed to add product'));
+      return Left(ServerFailure('Failed to add product'));
     }
   }
 
   @override
   Future<Either<Failure, void>> updateProduct(Product product) async {
+    if (!_isAuthenticated) {
+      return Left(AuthenticationFailure('User not authenticated'));
+    }
     try {
       final productModel = ProductModel.fromEntity(product);
-      
-      await localDataSource.updateProduct(productModel);
-
-      await syncManager.queueSync(
-        entityType: 'product',
-        entityId: product.id,
-        operation: 'update',
-        data: productModel.toJson(),
-      );
-
-      if (await networkInfo.isConnected) {
-        try {
-          if (_isAuthenticated) {
-            await remoteDataSource.updateProduct(_userId, productModel);
-            await syncManager.markAsSynced('product', product.id);
-          }
-        } catch (e) {
-          // Will be synced later
-        }
-      }
-
+      await remoteDataSource.updateProduct(_userId, productModel);
       return const Right(null);
     } catch (e) {
-      return Left(DatabaseFailure('Failed to update product'));
+      return Left(ServerFailure('Failed to update product'));
     }
   }
 
   @override
   Future<Either<Failure, void>> deleteProduct(String id) async {
+    if (!_isAuthenticated) {
+      return Left(AuthenticationFailure('User not authenticated'));
+    }
     try {
-      await localDataSource.deleteProduct(id);
-
-      await syncManager.queueSync(
-        entityType: 'product',
-        entityId: id,
-        operation: 'delete',
-        data: {'id': id},
-      );
-
-      if (await networkInfo.isConnected) {
-        try {
-          if (_isAuthenticated) {
-            await remoteDataSource.deleteProduct(_userId, id);
-            await syncManager.markAsSynced('product', id);
-          }
-        } catch (e) {
-          // Will be synced later
-        }
-      }
-
+      await remoteDataSource.deleteProduct(_userId, id);
       return const Right(null);
     } catch (e) {
-      return Left(DatabaseFailure('Failed to delete product'));
+      return Left(ServerFailure('Failed to delete product'));
     }
   }
 
   @override
   Future<Either<Failure, void>> updateProductStock(String id, double stock) async {
+    if (!_isAuthenticated) {
+      return Left(AuthenticationFailure('User not authenticated'));
+    }
     try {
-      await localDataSource.updateProductStock(id, stock);
-
-      if (await networkInfo.isConnected) {
-        final product = await localDataSource.getProductById(id);
-        if (product != null) {
-          if (_isAuthenticated) {
-            await remoteDataSource.updateProduct(_userId, product);
-          }
-        }
-      }
-
+      // Fetch current state
+      // نحتاج لتحويل الـ Entity إلى Model لاستخدام copyWith
+      // بما أن getProductById ترجع Entity (Product)، نحتاج للتأكد من التحويل
+      final currentProductEntity = await remoteDataSource.getProductById(_userId, id);
+      final currentProductModel = ProductModel.fromEntity(currentProductEntity);
+      
+      // --- تصحيح الخطأ هنا ---
+      // استخدام stock: بدلاً من currentStock:
+      final updatedProduct = currentProductModel.copyWith(stock: stock);
+      
+      await remoteDataSource.updateProduct(_userId, updatedProduct);
       return const Right(null);
     } catch (e) {
-      return Left(DatabaseFailure('Failed to update product stock'));
+      return Left(ServerFailure('Failed to update product stock'));
     }
   }
 
@@ -242,7 +160,6 @@ class ProductRepositoryImpl implements ProductRepository {
             (products) => Right<Failure, List<Product>>(products),
           ).handleError((e) {
             if (e is FirebaseException && e.code == 'permission-denied') {
-              developer.log('Permission denied watching products', name: 'ProductRepository', error: e);
               throw AuthenticationFailure('Insufficient permissions to read products');
             }
             throw e;
