@@ -48,6 +48,7 @@ class DistributionItemModel extends DistributionItem {
       'id': id,
       'distribution_id': distributionId,
       'product_id': productId,
+      'product_name': productName,
       'quantity': quantity,
       'price': price,
       'subtotal': subtotal,

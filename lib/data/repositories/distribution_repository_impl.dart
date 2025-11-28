@@ -1,5 +1,6 @@
 // ignore_for_file: unused_import
 
+import 'dart:async';
 import 'package:dartz/dartz.dart';
 import '../../domain/entities/distribution.dart';
 import '../../domain/entities/distribution_item.dart';
@@ -9,9 +10,8 @@ import '../datasources/remote/distribution_remote_datasource.dart';
 import '../datasources/remote/customer_remote_datasource.dart';
 import '../datasources/remote/product_remote_datasource.dart';
 import '../models/distribution_model.dart';
-// لا نحتاج لاستيراد نماذج المنتج والعميل بشكل صريح إذا كانت تأتي من Datasources،
-// ولكن للتأكد من copyWith، يفترض أن النماذج تعرف خصائصها.
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:developer' as developer;
 
 class DistributionRepositoryImpl implements DistributionRepository {
@@ -30,17 +30,41 @@ class DistributionRepositoryImpl implements DistributionRepository {
   String get _userId => firebaseAuth.currentUser?.uid ?? '';
   bool get _isAuthenticated => firebaseAuth.currentUser != null;
 
+  /// التحقق من أخطاء الشبكة
+  bool _isOfflineError(Object e) {
+    if (e is TimeoutException) return true;
+    if (e is FirebaseException && (e.code == 'unavailable' || e.code == 'unknown')) {
+      return true;
+    }
+    final s = e.toString().toLowerCase();
+    return s.contains('unavailable') || 
+           s.contains('unknownhostexception') || 
+           s.contains('network') || 
+           s.contains('failed to resolve name');
+  }
+
+  // --- ثوابت الأداء ---
+  // نبقي مهلة الكتابة فقط لتسريع الواجهة عند الحفظ
+  static const Duration _writeTimeout = Duration(milliseconds: 300);
+  
+  // تم إزالة مهلة القراءة للسماح للكاش بالعمل بشكل طبيعي
+
   @override
   Future<Either<Failure, List<Distribution>>> getAllDistributions() async {
     if (!_isAuthenticated) {
       return Left(AuthenticationFailure('User not authenticated'));
     }
     try {
+      // إزالة Timeout للسماح لـ Firestore بجلب البيانات من الكاش عند انقطاع النت
       final remoteDistributions = await remoteDataSource.getAllDistributions(_userId);
-      // Enrich distributions with missing customer/product names when necessary
-      final enriched = await Future.wait<Distribution>(remoteDistributions.map((d) => _enrichDistributionWithNames(d)).toList());
+      
+      // الإثراء المتوازي (سريع جداً)
+      final enriched = await Future.wait(remoteDistributions.map((d) => _enrichDistributionWithNames(d)));
       return Right(enriched);
     } catch (e) {
+      // في حالة القراءة، إذا حدث خطأ حقيقي (غير الأوفلاين) نرجعه
+      // Firestore Persistence عادة لا يرمي خطأ عند الأوفلاين بل يعيد الكاش
+      developer.log('Error fetching distributions', error: e, name: 'DistributionRepository');
       return Left(ServerFailure(e.toString()));
     }
   }
@@ -67,7 +91,7 @@ class DistributionRepositoryImpl implements DistributionRepository {
     try {
       final allDistributions = await remoteDataSource.getAllDistributions(_userId);
       final customerDistributions = allDistributions.where((d) => d.customerId == customerId).toList();
-      final enriched = await Future.wait<Distribution>(customerDistributions.map((d) => _enrichDistributionWithNames(d)).toList());
+      final enriched = await Future.wait(customerDistributions.map((d) => _enrichDistributionWithNames(d)));
       return Right(enriched);
     } catch (e) {
       return Left(ServerFailure('Failed to fetch customer distributions'));
@@ -85,7 +109,7 @@ class DistributionRepositoryImpl implements DistributionRepository {
         return d.distributionDate.isAfter(start.subtract(const Duration(days: 1))) && 
                d.distributionDate.isBefore(end.add(const Duration(days: 1)));
       }).toList();
-      final enriched = await Future.wait<Distribution>(rangeDistributions.map((d) => _enrichDistributionWithNames(d)).toList());
+      final enriched = await Future.wait(rangeDistributions.map((d) => _enrichDistributionWithNames(d)));
       return Right(enriched);
     } catch (e) {
       return Left(ServerFailure('Failed to fetch distributions by date range'));
@@ -98,32 +122,45 @@ class DistributionRepositoryImpl implements DistributionRepository {
       return Left(AuthenticationFailure('User not authenticated'));
     }
     try {
-      // 1. Update Product Stocks (Remote)
+      // عمليات الكتابة: نحتفظ بمهلة الكتابة القصيرة لمنع التعليق
+      
+      // 1. Update Product Stocks
       for (var item in distribution.items) {
-        final productModel = await productRemoteDataSource.getProductById(_userId, item.productId);
-        
-        // تصحيح: استخدام .stock بدلاً من .currentStock
-        final updatedStock = productModel.stock - item.quantity;
-        
-        // تصحيح: استخدام معامل stock في copyWith
-        final updatedProduct = productModel.copyWith(stock: updatedStock);
-        
-        await productRemoteDataSource.updateProduct(_userId, updatedProduct);
+        try {
+          final productModel = await productRemoteDataSource.getProductById(_userId, item.productId);
+          final updatedStock = productModel.stock - item.quantity;
+          final updatedProduct = productModel.copyWith(stock: updatedStock);
+          await productRemoteDataSource.updateProduct(_userId, updatedProduct)
+              .timeout(_writeTimeout);
+        } catch (e) {
+          if (!_isOfflineError(e)) rethrow;
+          developer.log('Offline: Product stock update queued locally.', name: 'DistributionRepository');
+        }
       }
 
-      // 2. Update Customer Balance (Remote)
-      final customerModel = await customerRemoteDataSource.getCustomerById(_userId, distribution.customerId);
-      final updatedBalance = customerModel.balance + distribution.pendingAmount;
-      final updatedCustomer = customerModel.copyWith(balance: updatedBalance);
-      
-      await customerRemoteDataSource.updateCustomer(_userId, updatedCustomer);
+      // 2. Update Customer Balance
+      try {
+        final customerModel = await customerRemoteDataSource.getCustomerById(_userId, distribution.customerId);
+        final updatedBalance = customerModel.balance + distribution.pendingAmount;
+        final updatedCustomer = customerModel.copyWith(balance: updatedBalance);
+        await customerRemoteDataSource.updateCustomer(_userId, updatedCustomer)
+            .timeout(_writeTimeout);
+      } catch (e) {
+        if (!_isOfflineError(e)) rethrow;
+        developer.log('Offline: Customer balance update queued locally.', name: 'DistributionRepository');
+      }
 
-      // 3. Create Distribution (Remote)
+      // 3. Create Distribution
       final distributionModel = DistributionModel.fromEntity(distribution);
-      await remoteDataSource.createDistribution(_userId, distributionModel);
+      await remoteDataSource.createDistribution(_userId, distributionModel)
+          .timeout(_writeTimeout);
 
       return Right(distribution.id);
     } catch (e) {
+      if (_isOfflineError(e)) {
+        developer.log('Offline/Timeout during Create Distribution. Optimistic success.', name: 'DistributionRepository');
+        return Right(distribution.id);
+      }
       return Left(ServerFailure('Failed to create distribution: $e'));
     }
   }
@@ -135,9 +172,13 @@ class DistributionRepositoryImpl implements DistributionRepository {
     }
     try {
       final distributionModel = DistributionModel.fromEntity(distribution);
-      await remoteDataSource.updateDistribution(_userId, distributionModel);
+      await remoteDataSource.updateDistribution(_userId, distributionModel)
+          .timeout(_writeTimeout);
       return const Right(null);
     } catch (e) {
+      if (_isOfflineError(e)) {
+        return const Right(null);
+      }
       return Left(ServerFailure('Failed to update distribution'));
     }
   }
@@ -150,27 +191,36 @@ class DistributionRepositoryImpl implements DistributionRepository {
     try {
       final distribution = await remoteDataSource.getDistributionById(_userId, id);
 
-      // 1. Revert Product Stocks (Remote)
       for (var item in distribution.items) {
-        final productModel = await productRemoteDataSource.getProductById(_userId, item.productId);
-        // تصحيح: استخدام .stock
-        final updatedStock = productModel.stock + item.quantity; 
-        // تصحيح: استخدام stock:
-        final updatedProduct = productModel.copyWith(stock: updatedStock);
-        await productRemoteDataSource.updateProduct(_userId, updatedProduct);
+        try {
+          final productModel = await productRemoteDataSource.getProductById(_userId, item.productId);
+          final updatedStock = productModel.stock + item.quantity; 
+          final updatedProduct = productModel.copyWith(stock: updatedStock);
+          await productRemoteDataSource.updateProduct(_userId, updatedProduct)
+              .timeout(_writeTimeout);
+        } catch (e) {
+          if (!_isOfflineError(e)) rethrow;
+        }
       }
 
-      // 2. Revert Customer Balance (Remote)
-      final customerModel = await customerRemoteDataSource.getCustomerById(_userId, distribution.customerId);
-      final updatedBalance = customerModel.balance - distribution.pendingAmount;
-      final updatedCustomer = customerModel.copyWith(balance: updatedBalance);
-      await customerRemoteDataSource.updateCustomer(_userId, updatedCustomer);
+      try {
+        final customerModel = await customerRemoteDataSource.getCustomerById(_userId, distribution.customerId);
+        final updatedBalance = customerModel.balance - distribution.pendingAmount;
+        final updatedCustomer = customerModel.copyWith(balance: updatedBalance);
+        await customerRemoteDataSource.updateCustomer(_userId, updatedCustomer)
+            .timeout(_writeTimeout);
+      } catch (e) {
+        if (!_isOfflineError(e)) rethrow;
+      }
 
-      // 3. Delete Distribution (Remote)
-      await remoteDataSource.deleteDistribution(_userId, id);
+      await remoteDataSource.deleteDistribution(_userId, id)
+          .timeout(_writeTimeout);
 
       return const Right(null);
     } catch (e) {
+      if (_isOfflineError(e)) {
+        return const Right(null);
+      }
       return Left(ServerFailure('Failed to delete distribution'));
     }
   }
@@ -181,12 +231,10 @@ class DistributionRepositoryImpl implements DistributionRepository {
       return Left(AuthenticationFailure('User not authenticated'));
     }
     try {
-      // 1. Fetch Distribution
       final distribution = await remoteDataSource.getDistributionById(_userId, distributionId);
       
       final newPaidAmount = distribution.paidAmount + amount;
       
-      // تصحيح: استخدام Enum بدلاً من String
       PaymentStatus paymentStatus = PaymentStatus.pending;
       if (newPaidAmount >= distribution.totalAmount) {
         paymentStatus = PaymentStatus.paid;
@@ -194,24 +242,34 @@ class DistributionRepositoryImpl implements DistributionRepository {
         paymentStatus = PaymentStatus.partial;
       }
 
-      // استخدام copyWith الجديد الذي يقبل PaymentStatus
       final updatedDistribution = DistributionModel.fromEntity(distribution).copyWith(
         paidAmount: newPaidAmount,
         paymentStatus: paymentStatus,
       );
 
-      // 2. Update Distribution (Remote)
-      await remoteDataSource.updateDistribution(_userId, updatedDistribution);
+      try {
+        await remoteDataSource.updateDistribution(_userId, updatedDistribution)
+            .timeout(_writeTimeout);
+      } catch (e) {
+        if (!_isOfflineError(e)) rethrow;
+      }
 
-      // 3. Update Customer Balance (Remote)
-      final customerModel = await customerRemoteDataSource.getCustomerById(_userId, distribution.customerId);
-      final updatedBalance = customerModel.balance - amount;
-      final updatedCustomer = customerModel.copyWith(balance: updatedBalance);
-      
-      await customerRemoteDataSource.updateCustomer(_userId, updatedCustomer);
+      try {
+        final customerModel = await customerRemoteDataSource.getCustomerById(_userId, distribution.customerId);
+        final updatedBalance = customerModel.balance - amount;
+        final updatedCustomer = customerModel.copyWith(balance: updatedBalance);
+        
+        await customerRemoteDataSource.updateCustomer(_userId, updatedCustomer)
+            .timeout(_writeTimeout);
+      } catch (e) {
+        if (!_isOfflineError(e)) rethrow;
+      }
 
       return const Right(null);
     } catch (e) {
+      if (_isOfflineError(e)) {
+        return const Right(null);
+      }
       return Left(ServerFailure('Failed to record payment'));
     }
   }
@@ -275,45 +333,51 @@ class DistributionRepositoryImpl implements DistributionRepository {
         return matchDate && matchCustomer && matchProduct;
       }).toList();
 
-      final enriched = await Future.wait<Distribution>(filtered.map((d) => _enrichDistributionWithNames(d)).toList());
+      final enriched = await Future.wait(filtered.map((d) => _enrichDistributionWithNames(d)));
       return Right(enriched);
     } catch (e) {
       return Left(ServerFailure('Failed to fetch filtered distributions'));
     }
   }
 
+  // --- الإثراء المتوازي (سريع وآمن للأوفلاين) ---
   Future<Distribution> _enrichDistributionWithNames(Distribution dist) async {
     var updated = dist;
     try {
+      // استخدام Future.wait لا يعمل هنا لأننا نريد تحديث الكائن نفسه، 
+      // ولكن عمليات الجلب بحد ذاتها يجب أن تكون سريعة (من الكاش).
+      // سنستخدم مهلة قصيرة جدًا (200ms) لكل حقل اسم فقط لضمان عدم تعليق القائمة الكاملة
+      // إذا فشل الجلب، نعرض الاسم الفارغ أو القديم.
+      
       if (updated.customerName.trim().isEmpty) {
         try {
-          final customerModel = await customerRemoteDataSource.getCustomerById(_userId, updated.customerId);
-          developer.log('Enriching distribution ${updated.id} with customer name from remote: ${customerModel.name}', name: 'DistributionRepositoryImpl');
+          final customerModel = await customerRemoteDataSource.getCustomerById(_userId, updated.customerId)
+              .timeout(const Duration(milliseconds: 200)); 
           updated = updated.copyWith(customerName: customerModel.name);
         } catch (_) {}
       }
 
-      final items = <DistributionItem>[];
-      for (var it in updated.items) {
+      // تحسين متوازي لأسماء المنتجات داخل الفاتورة الواحدة
+      final itemFutures = updated.items.map((it) async {
         if (it.productName.trim().isEmpty) {
           try {
-            final productModel = await productRemoteDataSource.getProductById(_userId, it.productId);
-            developer.log('Enriching distribution item ${it.id} with product name: ${productModel.name}', name: 'DistributionRepositoryImpl');
-            items.add(it.copyWith(productName: productModel.name));
+            final productModel = await productRemoteDataSource.getProductById(_userId, it.productId)
+                .timeout(const Duration(milliseconds: 200));
+            return it.copyWith(productName: productModel.name);
           } catch (_) {
-            items.add(it);
+            return it;
           }
         } else {
-          items.add(it);
+          return it;
         }
-      }
-      updated = updated.copyWith(items: items);
+      }).toList();
+
+      final enrichedItems = await Future.wait(itemFutures);
+      updated = updated.copyWith(items: enrichedItems);
+
     } catch (_) {
       // ignore
     }
     return updated;
   }
-
-  
-  
 }

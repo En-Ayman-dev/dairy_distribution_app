@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart' as riverpod;
 import 'l10n/app_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+// --- إضافة استيراد Firestore لضبط الإعدادات ---
+import 'package:cloud_firestore/cloud_firestore.dart'; 
 import 'dart:developer' as developer;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart' as provider;
@@ -40,6 +42,16 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  // ---------------------------------------------------------------------------
+  // تفعيل المزامنة التلقائية والعمل دون اتصال (Offline Persistence)
+  // ---------------------------------------------------------------------------
+  FirebaseFirestore.instance.settings = const Settings(
+    persistenceEnabled: true, // تفعيل التخزين المحلي
+    cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED, // تخزين غير محدود للبيانات لتجنب الحذف العشوائي
+  );
+  developer.log('Firebase Offline Persistence Enabled', name: 'main');
+  // ---------------------------------------------------------------------------
+
   // تهيئة Service Locator
   await setupServiceLocator();
 
@@ -73,6 +85,7 @@ void main() async {
     ),
   );
 }
+
 class MyApp extends riverpod.ConsumerWidget {
   const MyApp({super.key});
 
@@ -93,8 +106,8 @@ class MyApp extends riverpod.ConsumerWidget {
         locale: settings.locale,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-  initialRoute: AppRoutes.splash,
-  navigatorObservers: [LoggingNavigatorObserver()],
+        initialRoute: AppRoutes.splash,
+        navigatorObservers: [LoggingNavigatorObserver()],
         onGenerateRoute: (settings) {
           switch (settings.name) {
             case AppRoutes.splash:

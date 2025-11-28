@@ -43,6 +43,7 @@ class DistributionRemoteDataSourceImpl
       for (var doc in snapshot.docs) {
         final data = doc.data() as Map<String, dynamic>;
         final items = await _getDistributionItems(userId, doc.id);
+        developer.log('Read remote distribution doc: id=${doc.id} data=$data', name: 'DistributionRemoteDataSource');
         distributions.add(DistributionModel.fromJson(data, items));
       }
       return distributions;
@@ -60,7 +61,8 @@ class DistributionRemoteDataSourceImpl
       if (!doc.exists) {
         throw Exception('Distribution not found');
       }
-      final items = await _getDistributionItems(userId, distributionId);
+        final items = await _getDistributionItems(userId, distributionId);
+        developer.log('Read remote distribution by id=$distributionId', name: 'DistributionRemoteDataSource');
       return DistributionModel.fromJson(
           doc.data() as Map<String, dynamic>, items);
     } catch (e) {
@@ -78,7 +80,9 @@ class DistributionRemoteDataSourceImpl
       // Add distribution
       final distributionRef =
           _distributionsCollection(userId).doc(distribution.id);
-      batch.set(distributionRef, distribution.toJson());
+      final distributionJson = distribution.toJson();
+      developer.log('Creating distribution remote: id=${distribution.id} json=$distributionJson', name: 'DistributionRemoteDataSource');
+      batch.set(distributionRef, distributionJson);
 
       // Add distribution items
       for (var item in distribution.items) {

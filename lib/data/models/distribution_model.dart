@@ -73,6 +73,7 @@ class DistributionModel extends Distribution {
     return {
       'id': id,
       'customer_id': customerId,
+      'customer_name': customerName,
       'distribution_date': distributionDate.toIso8601String(),
       'total_amount': totalAmount,
       'paid_amount': paidAmount,

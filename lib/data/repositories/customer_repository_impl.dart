@@ -1,3 +1,6 @@
+// ignore_for_file: unnecessary_import
+
+import 'dart:async';
 import 'package:dartz/dartz.dart';
 import '../../domain/entities/customer.dart';
 import '../../domain/repositories/customer_repository.dart';
@@ -5,6 +8,7 @@ import '../../core/errors/failures.dart';
 import '../datasources/remote/customer_remote_datasource.dart';
 import '../models/customer_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:developer' as developer;
 
 class CustomerRepositoryImpl implements CustomerRepository {
@@ -19,17 +23,39 @@ class CustomerRepositoryImpl implements CustomerRepository {
   String get _userId => firebaseAuth.currentUser?.uid ?? '';
   bool get _isAuthenticated => firebaseAuth.currentUser != null;
 
+  /// التحقق من أخطاء الشبكة أو انتهاء المهلة
+  bool _isOfflineError(Object e) {
+    if (e is TimeoutException) return true;
+    if (e is FirebaseException && (e.code == 'unavailable' || e.code == 'unknown')) {
+      return true;
+    }
+    final s = e.toString().toLowerCase();
+    return s.contains('unavailable') || 
+           s.contains('unknownhostexception') || 
+           s.contains('network') ||
+           s.contains('failed to resolve name');
+  }
+
+  // --- ثوابت الأداء (Performance Tuning) ---
+  // مهلة قصيرة جداً للكتابة (300ms) لضمان استجابة فورية للواجهة
+  static const Duration _writeTimeout = Duration(milliseconds: 300);
+  
+  // مهلة متوسطة للقراءة (3s) لعدم تعليق الواجهة في حالة ضعف الشبكة
+  static const Duration _readTimeout = Duration(seconds: 3);
+
   @override
   Future<Either<Failure, List<Customer>>> getAllCustomers() async {
     if (!_isAuthenticated) {
       return Left(AuthenticationFailure('User not authenticated'));
     }
     try {
-      developer.log('getAllCustomers called (Remote Only)', name: 'CustomerRepository');
-      final remoteCustomers = await remoteDataSource.getAllCustomers(_userId);
+      final remoteCustomers = await remoteDataSource.getAllCustomers(_userId)
+          .timeout(_readTimeout); // تطبيق مهلة القراءة
       return Right(remoteCustomers);
     } catch (e) {
-      developer.log('Failed to fetch customers from remote', error: e, name: 'CustomerRepository');
+      if (_isOfflineError(e)) {
+        return Left(ServerFailure('Offline: Could not sync customers.'));
+      }
       return Left(ServerFailure(e.toString()));
     }
   }
@@ -40,9 +66,13 @@ class CustomerRepositoryImpl implements CustomerRepository {
       return Left(AuthenticationFailure('User not authenticated'));
     }
     try {
-      final customer = await remoteDataSource.getCustomerById(_userId, id);
+      final customer = await remoteDataSource.getCustomerById(_userId, id)
+          .timeout(_readTimeout);
       return Right(customer);
     } catch (e) {
+      if (_isOfflineError(e)) {
+        return Left(ServerFailure('Offline: Customer not found in cache.'));
+      }
       return Left(NotFoundFailure('Customer not found'));
     }
   }
@@ -53,9 +83,8 @@ class CustomerRepositoryImpl implements CustomerRepository {
       return Left(AuthenticationFailure('User not authenticated'));
     }
     try {
-      // Currently fetching all and filtering in memory since we are removing local DB.
-      // Optimization: This should be moved to a Firestore Query in RemoteDataSource later.
-      final allCustomers = await remoteDataSource.getAllCustomers(_userId);
+      final allCustomers = await remoteDataSource.getAllCustomers(_userId)
+          .timeout(_readTimeout);
       final filteredCustomers = allCustomers.where((c) => c.status == status).toList();
       return Right(filteredCustomers);
     } catch (e) {
@@ -69,9 +98,8 @@ class CustomerRepositoryImpl implements CustomerRepository {
       return Left(AuthenticationFailure('User not authenticated'));
     }
     try {
-      // Currently fetching all and filtering in memory.
-      // Optimization: This works fine for small datasets but should be optimized for scale.
-      final allCustomers = await remoteDataSource.getAllCustomers(_userId);
+      final allCustomers = await remoteDataSource.getAllCustomers(_userId)
+          .timeout(_readTimeout);
       final filteredCustomers = allCustomers.where((c) {
         return c.name.toLowerCase().contains(query.toLowerCase()) ||
                c.phone.contains(query);
@@ -89,10 +117,18 @@ class CustomerRepositoryImpl implements CustomerRepository {
     }
     try {
       final customerModel = CustomerModel.fromEntity(customer);
-      await remoteDataSource.addCustomer(_userId, customerModel);
+      
+      // استخدام المهلة القصيرة (Write Timeout)
+      await remoteDataSource.addCustomer(_userId, customerModel)
+          .timeout(_writeTimeout);
+          
       return Right(customer.id);
     } catch (e) {
-      return Left(ServerFailure('Failed to add customer'));
+      if (_isOfflineError(e)) {
+        developer.log('Offline/Timeout during Add Customer. Optimistic success.', name: 'CustomerRepository');
+        return Right(customer.id);
+      }
+      return Left(ServerFailure('Failed to add customer: $e'));
     }
   }
 
@@ -103,9 +139,16 @@ class CustomerRepositoryImpl implements CustomerRepository {
     }
     try {
       final customerModel = CustomerModel.fromEntity(customer);
-      await remoteDataSource.updateCustomer(_userId, customerModel);
+      
+      await remoteDataSource.updateCustomer(_userId, customerModel)
+          .timeout(_writeTimeout);
+          
       return const Right(null);
     } catch (e) {
+      if (_isOfflineError(e)) {
+        developer.log('Offline/Timeout during Update Customer. Optimistic success.', name: 'CustomerRepository');
+        return const Right(null);
+      }
       return Left(ServerFailure('Failed to update customer'));
     }
   }
@@ -116,9 +159,15 @@ class CustomerRepositoryImpl implements CustomerRepository {
       return Left(AuthenticationFailure('User not authenticated'));
     }
     try {
-      await remoteDataSource.deleteCustomer(_userId, id);
+      await remoteDataSource.deleteCustomer(_userId, id)
+          .timeout(_writeTimeout);
+          
       return const Right(null);
     } catch (e) {
+      if (_isOfflineError(e)) {
+        developer.log('Offline/Timeout during Delete Customer. Optimistic success.', name: 'CustomerRepository');
+        return const Right(null);
+      }
       return Left(ServerFailure('Failed to delete customer'));
     }
   }
@@ -132,15 +181,21 @@ class CustomerRepositoryImpl implements CustomerRepository {
       return Left(AuthenticationFailure('User not authenticated'));
     }
     try {
-      // Since we don't have local state, we fetch fresh data first to ensure consistency,
-      // then update. Ideally, RemoteDataSource should have a specific atomic 'updateField' method.
-      final currentCustomerModel = await remoteDataSource.getCustomerById(_userId, id);
-      
+      // القراءة نمنحها وقتاً أطول قليلاً، أو نستخدم نفس مهلة الكتابة إذا أردنا سرعة قصوى
+      final currentCustomerModel = await remoteDataSource.getCustomerById(_userId, id)
+          .timeout(_readTimeout);
+          
       final updatedCustomer = currentCustomerModel.copyWith(balance: balance);
       
-      await remoteDataSource.updateCustomer(_userId, updatedCustomer);
+      await remoteDataSource.updateCustomer(_userId, updatedCustomer)
+          .timeout(_writeTimeout);
+          
       return const Right(null);
     } catch (e) {
+      if (_isOfflineError(e)) {
+        developer.log('Offline/Timeout during Update Balance. Optimistic success.', name: 'CustomerRepository');
+        return const Right(null);
+      }
       return Left(ServerFailure('Failed to update customer balance'));
     }
   }
@@ -157,7 +212,11 @@ class CustomerRepositoryImpl implements CustomerRepository {
             if (e is FirebaseException && e.code == 'permission-denied') {
               throw AuthenticationFailure('Insufficient permissions to read customers');
             }
-            throw e;
+            if (_isOfflineError(e)) {
+               developer.log('Stream offline error ignored', name: 'CustomerRepository');
+            } else {
+               throw e;
+            }
           });
     } catch (e) {
       return Stream.value(Left(ServerFailure('Failed to watch customers')));

@@ -142,8 +142,34 @@ class DistributionViewModel extends ChangeNotifier {
       },
       (distributionId) {
         _lastCreatedDistributionId = distributionId;
-        // Ensure the saved distribution is loaded into _selectedDistribution
-        // before clearing the in-memory current items so printing can use it.
+        // Create a local Distribution representation so the UI can display
+        // the customer and product names immediately (works offline too).
+        final total = _currentItems.fold<double>(0.0, (s, i) => s + i.subtotal);
+        PaymentStatus paymentStatus = PaymentStatus.pending;
+        if (_currentPaidAmount >= total) {
+          paymentStatus = PaymentStatus.paid;
+        } else if (_currentPaidAmount > 0) {
+          paymentStatus = PaymentStatus.partial;
+        }
+
+        _selectedDistribution = Distribution(
+          id: distributionId,
+          customerId: params.customerId,
+          customerName: params.customerName,
+          distributionDate: params.distributionDate,
+          items: List<DistributionItem>.from(_currentItems),
+          totalAmount: total,
+          paidAmount: _currentPaidAmount,
+          paymentStatus: paymentStatus,
+          notes: params.notes,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+
+        notifyListeners();
+
+        // Attempt to fetch the saved distribution from the repository to keep
+        // the app state in sync (refresh and clear now optional)
         () async {
           await getDistributionById(distributionId);
           clearCurrentDistribution();

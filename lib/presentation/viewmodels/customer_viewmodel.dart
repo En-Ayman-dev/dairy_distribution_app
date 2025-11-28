@@ -4,6 +4,7 @@ import '../../domain/repositories/customer_repository.dart';
 import '../../domain/repositories/distribution_repository.dart';
 import '../../domain/usecases/customer/add_customer.dart';
 import 'package:uuid/uuid.dart';
+import 'dart:developer' as developer;
 
 enum CustomerViewState {
   initial,
@@ -43,14 +44,26 @@ class CustomerViewModel extends ChangeNotifier {
 
   // Load all customers
   Future<void> loadCustomers() async {
-    _setState(CustomerViewState.loading);
+    // لا نعرض مؤشر تحميل إذا كان لدينا بيانات بالفعل (لتحسين تجربة المستخدم أثناء التحديث)
+    if (_customers.isEmpty) {
+      _setState(CustomerViewState.loading);
+    }
 
     final result = await _repository.getAllCustomers();
 
     result.fold(
       (failure) {
-        _errorMessage = failure.message;
-        _setState(CustomerViewState.error);
+        // --- تعديل هام جداً ---
+        // إذا كان الخطأ بسبب الأوفلاين، لا نوقف التطبيق ولا نعرض شاشة خطأ.
+        // نعتبر الحالة Loaded ونحتفظ بالبيانات القديمة (أو الفارغة).
+        if (failure.message.contains('Offline') || failure.message.toLowerCase().contains('connection')) {
+           developer.log('Load customers offline warning: ${failure.message}', name: 'CustomerViewModel');
+           _errorMessage = null; // لا نعتبره خطأ يستوجب التنبيه
+           _setState(CustomerViewState.loaded);
+        } else {
+           _errorMessage = failure.message;
+           _setState(CustomerViewState.error);
+        }
       },
       (customers) {
         _customers = customers;
@@ -84,7 +97,9 @@ class CustomerViewModel extends ChangeNotifier {
         return false;
       },
       (customerId) {
-        loadCustomers(); // Reload customers
+        // تم الإضافة بنجاح (سواء أونلاين أو أوفلاين)
+        // نقوم بطلب تحديث القائمة، ولكن لا ننتظر انتهاءها لكي نرجع true للواجهة فوراً
+        loadCustomers(); 
         return true;
       },
     );
@@ -203,10 +218,6 @@ class CustomerViewModel extends ChangeNotifier {
   }
 
   /// Records a payment for a customer.
-  /// If [distributionId] is provided, the payment is applied to that distribution
-  /// (so distribution pending and customer balance are updated atomically by
-  /// the Distribution repository). Otherwise the payment updates only the
-  /// customer's balance.
   Future<bool> recordPayment(String customerId, double amount, {String? distributionId}) async {
     // Basic validation
     final index = _customers.indexWhere((c) => c.id == customerId);
@@ -218,15 +229,13 @@ class CustomerViewModel extends ChangeNotifier {
 
     try {
       if (distributionId != null) {
-        // Delegate to distribution repository which already updates both
-        // distribution and customer local DB and queues sync.
+        // Delegate to distribution repository
         final result = await _distributionRepository.recordPayment(distributionId, amount);
         return result.fold((failure) {
           _errorMessage = failure.message;
           notifyListeners();
           return false;
         }, (_) {
-          // Reload customers and distributions to reflect change
           loadCustomers();
           return true;
         });
@@ -242,7 +251,6 @@ class CustomerViewModel extends ChangeNotifier {
           notifyListeners();
           return false;
         }, (_) {
-          // Reload customers to reflect updated balance
           loadCustomers();
           return true;
         });

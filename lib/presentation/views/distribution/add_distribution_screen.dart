@@ -33,18 +33,19 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
   String? _selectedCustomerId;
   String? _selectedProductId;
   
-  // تم تغيير النوع إلى Entity لأن المستودع يرجع Entities
   List<Customer> _customers = [];
   List<Product> _products = [];
   
   bool _loading = true;
   bool _creating = false;
+  
+  // متغير للتحكم في خيار الكمية المجانية
+  bool _isFree = false;
 
   @override
   void initState() {
     super.initState();
     _loadLookups();
-    // Ensure print button is hidden when the screen is first opened
     WidgetsBinding.instance.addPostFrameCallback((_) {
       try {
         context.read<DistributionViewModel>().clearLastCreatedDistributionId();
@@ -52,26 +53,23 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
     });
   }
 
-  // --- تم تعديل هذه الدالة لاستخدام المستودعات بدلاً من LocalDataSource ---
   Future<void> _loadLookups() async {
     setState(() => _loading = true);
     try {
       final customerRepo = getIt<CustomerRepository>();
       final productRepo = getIt<ProductRepository>();
 
-      // جلب البيانات بشكل متوازي لتقليل وقت الانتظار
       final results = await Future.wait([
         customerRepo.getAllCustomers(),
         productRepo.getAllProducts(),
       ]);
 
-      final customerResult = results[0] as dynamic; // Dart inference helper
+      final customerResult = results[0] as dynamic; 
       final productResult = results[1] as dynamic;
 
       if (!mounted) return;
 
       setState(() {
-        // معالجة نتيجة العملاء
         customerResult.fold(
           (failure) {
              developer.log('Failed to load customers: ${failure.message}');
@@ -80,7 +78,6 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
           (data) => _customers = data as List<Customer>,
         );
 
-        // معالجة نتيجة المنتجات
         productResult.fold(
           (failure) {
              developer.log('Failed to load products: ${failure.message}');
@@ -89,11 +86,9 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
           (data) => _products = data as List<Product>,
         );
 
-        // تعيين القيم الافتراضية
         if (_customers.isNotEmpty) _selectedCustomerId ??= _customers.first.id;
         if (_products.isNotEmpty) {
            _selectedProductId ??= _products.first.id;
-           // preset price for initially selected product
            final p = _products.first;
            _priceController.text = p.price.toString();
         }
@@ -115,21 +110,54 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
   }
 
   void _addItem() {
+    final _ = AppLocalizations.of(context)!;
+
     final vm = context.read<DistributionViewModel>();
     if (_selectedProductId == null) return;
     
-    // البحث في قائمة المنتجات
     final product = _products.firstWhere((p) => p.id == _selectedProductId);
     
     final qty = double.tryParse(_qtyController.text) ?? 0.0;
     if (qty <= 0) return;
-    final price = double.tryParse(_priceController.text) ?? product.price;
+
+    // --- 1. التحقق من المخزون (Inventory Check) ---
+    // نحسب الكمية الموجودة حالياً في السلة لهذا المنتج
+    double currentCartQty = 0.0;
+    try {
+      final existingItem = vm.currentItems.firstWhere((item) => item.productId == product.id);
+      currentCartQty = existingItem.quantity;
+    } catch (_) {
+      // المنتج غير موجود في السلة
+    }
+
+    // التحقق: هل (الكمية الجديدة + ما في السلة) أكبر من المخزون؟
+    if ((qty + currentCartQty) > product.stock) {
+      final remaining = product.stock - currentCartQty;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(
+          'الكمية المطلوبة أكبر من المخزون المتوفر!\n'
+          'المخزون الحالي: ${product.stock}\n'
+          'الكمية في السلة: $currentCartQty\n'
+          'المتاح للإضافة: ${remaining > 0 ? remaining : 0}'
+        ),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 4),
+      ));
+      return; // إيقاف العملية
+    }
+    // ------------------------------------------------
+
+    // --- 2. منطق السعر المجاني ---
+    final price = _isFree ? 0.0 : (double.tryParse(_priceController.text) ?? product.price);
     
     vm.addItem(productId: product.id, productName: product.name, quantity: qty, price: price);
     
-    // reset qty to 1 and price back to product default
+    // إعادة تعيين الحقول
     _qtyController.text = '1';
     _priceController.text = product.price.toString();
+    setState(() {
+      _isFree = false; // إعادة تعيين خيار المجاني
+    });
   }
 
   Future<void> _submit() async {
@@ -160,14 +188,11 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
 
     if (!mounted) return;
     if (ok) {
-      // Show success and keep the screen so user can print before exiting.
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.createTestDistributionSuccess)));
-      // Load the saved distribution details so printing can use that data
       final lastId = vm.lastCreatedDistributionId;
       if (lastId != null) {
         await vm.getDistributionById(lastId);
       }
-      // Do NOT pop here. PrintButton becomes visible because ViewModel stores lastCreatedDistributionId.
     } else {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(vm.errorMessage ?? AppLocalizations.of(context)!.errorOccurred)));
     }
@@ -188,7 +213,6 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                   children: [
                     Text(t.customersTitle, style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 8),
-                    // Wrap dropdown in a Row+Expanded to avoid overflow
                     Row(children: [
                       Expanded(
                         child: DropdownButton<String>(
@@ -204,14 +228,16 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                     Text(t.addProductTitle, style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 8),
 
+                    // --- تصميم جديد لصف إضافة المنتج ---
+                    // الصف الأول: المنتج والكمية
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        // Product dropdown should flex to available space
                         Expanded(
+                          flex: 2,
                           child: DropdownButton<String>(
                             value: _selectedProductId,
                             isExpanded: true,
+                            hint: const Text("اختر المنتج"),
                             items: _products.map((p) => DropdownMenuItem(value: p.id, child: Text(p.name))).toList(),
                             onChanged: (v) => setState(() {
                               _selectedProductId = v;
@@ -223,13 +249,62 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        SizedBox(width: 80, child: TextField(controller: _qtyController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: t.quantityLabel))),
-                        const SizedBox(width: 8),
-                        SizedBox(width: 90, child: TextField(controller: _priceController, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Price'))),
-                        const SizedBox(width: 8),
-                        ElevatedButton(onPressed: _addItem, child: Text(t.add)),
+                        Expanded(
+                          flex: 1,
+                          child: TextField(
+                            controller: _qtyController,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(labelText: t.quantityLabel),
+                          ),
+                        ),
                       ],
                     ),
+                    const SizedBox(height: 8),
+                    // الصف الثاني: السعر، خيار مجاني، وزر الإضافة
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: TextField(
+                            controller: _priceController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            enabled: !_isFree, // تعطيل السعر إذا كان مجاني
+                            decoration: InputDecoration(
+                              labelText: t.priceLabel,
+                              filled: _isFree,
+                              fillColor: _isFree ? Colors.grey.shade200 : null,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // خيار "مجاني"
+                        Row(
+                          children: [
+                            Checkbox(
+                              value: _isFree,
+                              onChanged: (val) {
+                                setState(() {
+                                  _isFree = val ?? false;
+                                  if (!_isFree && _selectedProductId != null) {
+                                    // استعادة السعر الأصلي عند إلغاء المجاني
+                                    final p = _products.firstWhere((p) => p.id == _selectedProductId);
+                                    _priceController.text = p.price.toString();
+                                  }
+                                });
+                              },
+                            ),
+                            const Text("مجاني", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: _addItem,
+                          child: Text(t.add),
+                        ),
+                      ],
+                    ),
+                    // ------------------------------------
 
                     const SizedBox(height: 12),
                     Text(t.itemsLabel, style: Theme.of(context).textTheme.titleMedium),
@@ -246,9 +321,13 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                             separatorBuilder: (_, __) => const Divider(height: 1),
                             itemBuilder: (_, idx) {
                               final it = items[idx];
+                              // عرض (مجاني) إذا كان السعر صفر
+                              final isFreeItem = it.price == 0;
                               return ListTile(
                                 title: Text(it.productName),
-                                subtitle: Text('${it.quantity} x ${it.price.toStringAsFixed(2)}'),
+                                subtitle: Text(isFreeItem 
+                                  ? '${it.quantity} x (مجاني)' 
+                                  : '${it.quantity} x ${it.price.toStringAsFixed(2)}'),
                                 trailing: Row(mainAxisSize: MainAxisSize.min, children: [Text(it.subtotal.toStringAsFixed(2)), IconButton(onPressed: () => vm.removeItem(it.id), icon: const Icon(Icons.delete_outline))]),
                               );
                             },
@@ -299,8 +378,6 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
     final vm = context.read<DistributionViewModel>();
     final customer = _customers.firstWhere((c) => c.id == _selectedCustomerId);
 
-    // If we don't have the saved distribution loaded yet, but there is a last-created id,
-    // load it so we always print the saved invoice.
     if (vm.selectedDistribution == null && vm.lastCreatedDistributionId != null) {
       await vm.getDistributionById(vm.lastCreatedDistributionId!);
     }
@@ -312,9 +389,7 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
     );
 
     if (output == PrintOutput.pdf) {
-      // توليد ملف PDF
       final pdfGen = PDFGenerator();
-      // Use the saved distribution (if loaded) to print the exact saved invoice.
       final distribution = vm.selectedDistribution;
       final items = distribution?.items ?? vm.currentItems;
       final total = distribution?.totalAmount ?? vm.getCurrentTotal();
@@ -339,9 +414,6 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
 
         if (!mounted) return;
 
-        // Show a SnackBar with an action to open the file. This avoids pushing
-        // another Navigator route and prevents accidentally popping the current
-        // screen.
         final snack = SnackBar(
           content: Text('تم إنشاء PDF: ${path.split(RegExp(r"[\\/]")).last}'),
           action: SnackBarAction(
@@ -354,7 +426,6 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
         ScaffoldMessenger.of(context).showSnackBar(snack);
 
         if (preview) {
-          // Open external viewer but do not pop any in-app routes
           OpenFile.open(path);
         }
       } catch (e, st) {
@@ -362,8 +433,6 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('حدث خطأ أثناء إنشاء PDF: $e')));
       }
-    } else {
-      // هنا يمكن ربط منطق الطباعة الحرارية الفعلية لاحقاً
     }
   }
 }
