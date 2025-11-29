@@ -180,7 +180,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }) {
     // هذا هو الـ consumer الذي سيعرض مؤشر التحميل
     // سيتم إضافته لاحقاً في ReportViewModel
-    final vm = context.watch<ReportViewModel>();
+    final _ = context.watch<ReportViewModel>();
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),

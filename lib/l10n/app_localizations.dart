@@ -218,6 +218,13 @@ class AppLocalizations {
   String get productLabel => locale.languageCode == 'ar' ? 'المنتج' : 'Product';
   String get supplierLabel => locale.languageCode == 'ar' ? 'المورد' : 'Supplier';
   String get addPurchaseButtonLabel => locale.languageCode == 'ar' ? 'إضافة شراء' : 'Add Purchase';
+
+  // Suppliers messages and utilities
+  String get supplierNameRequired => locale.languageCode == 'ar' ? 'اسم المورد مطلوب' : 'Supplier name is required';
+  String get supplierAddedSuccess => locale.languageCode == 'ar' ? 'تم إضافة المورد بنجاح' : 'Supplier added successfully';
+  String get supplierUpdatedSuccess => locale.languageCode == 'ar' ? 'تم تحديث المورد بنجاح' : 'Supplier updated successfully';
+  String get supplierDeletedSuccess => locale.languageCode == 'ar' ? 'تم حذف المورد بنجاح' : 'Supplier deleted successfully';
+  String get undo => locale.languageCode == 'ar' ? 'تراجع' : 'Undo';
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

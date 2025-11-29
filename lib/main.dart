@@ -34,7 +34,7 @@ import 'presentation/views/payments/payments_screen.dart';
 import 'features/settings/settings_page.dart';
 import 'presentation/views/splash/splash_screen.dart';
 import 'app/routes/app_routes.dart';
-import 'app/themes/app_theme.dart';
+import 'core/theme/app_theme.dart';
 import 'features/settings/settings_notifier.dart';
 import 'domain/entities/customer.dart';
 

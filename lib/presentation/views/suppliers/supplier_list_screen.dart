@@ -3,6 +3,11 @@ import 'package:provider/provider.dart';
 import '../../viewmodels/supplier_viewmodel.dart';
 import '../../../l10n/app_localizations.dart';
 
+// Improve Suppliers list UX
+// - Card based items with avatars
+// - Swipe to delete (Dismissible) with Undo
+// - Modal bottom sheet for Add/Edit supplier with validation
+
 class SupplierListScreen extends StatefulWidget {
   const SupplierListScreen({super.key});
 
@@ -30,120 +35,197 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
           if (vm.state == SupplierViewState.loading) return const Center(child: CircularProgressIndicator());
           if (vm.state == SupplierViewState.error) return Center(child: Text(vm.errorMessage ?? 'Error'));
 
-          if (vm.suppliers.isEmpty) return Center(child: Text(AppLocalizations.of(context)!.noSuppliersFound));
+          if (vm.suppliers.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.local_shipping, size: 56, color: Theme.of(context).colorScheme.primary),
+                  const SizedBox(height: 12),
+                  Text(AppLocalizations.of(context)!.noSuppliersFound, style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 8),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.add),
+                    label: Text(AppLocalizations.of(context)!.addSupplierTitle),
+                    onPressed: () => _showAddEditSupplierSheet(context),
+                  ),
+                ],
+              ),
+            );
+          }
 
-          return ListView.builder(
-            itemCount: vm.suppliers.length,
-            itemBuilder: (context, index) {
+          return RefreshIndicator(
+            onRefresh: () => vm.loadSuppliers(),
+            child: ListView.builder(
+              itemCount: vm.suppliers.length,
+              itemBuilder: (context, index) {
               final s = vm.suppliers[index];
-              return ListTile(
-                title: Text(s.name),
-                subtitle: Text(s.contact ?? ''),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      onPressed: () => _showEditSupplierDialog(context, s),
-                      icon: const Icon(Icons.edit),
+              return Dismissible(
+                key: Key(s.id),
+                background: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  decoration: BoxDecoration(color: Colors.redAccent, borderRadius: BorderRadius.circular(12)),
+                  alignment: Alignment.centerLeft,
+                  child: const Icon(Icons.delete, color: Colors.white),
+                ),
+                direction: DismissDirection.horizontal,
+                secondaryBackground: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  decoration: BoxDecoration(color: Colors.blueGrey, borderRadius: BorderRadius.circular(12)),
+                  alignment: Alignment.centerRight,
+                  child: const Icon(Icons.edit, color: Colors.white),
+                ),
+                confirmDismiss: (direction) async {
+                  // show a small confirmation before deleting
+                  if (direction == DismissDirection.endToStart) {
+                    // treat this as an edit gesture - open edit sheet
+                    _showAddEditSupplierSheet(context, supplier: s);
+                    return false;
+                  }
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (c) => AlertDialog(
+                      title: Text(AppLocalizations.of(context)!.confirmDeleteSupplier),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(c, false), child: Text(AppLocalizations.of(context)!.cancel)),
+                        ElevatedButton(onPressed: () => Navigator.pop(c, true), child: Text(AppLocalizations.of(context)!.delete)),
+                      ],
                     ),
-                    IconButton(
-                      onPressed: () => _deleteSupplier(s.id),
-                      icon: const Icon(Icons.delete),
+                  );
+                  if (confirm == true) {
+                    await _handleDeleteWithUndo(context, s);
+                    return true;
+                  }
+                  return false;
+                },
+                child: Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+                      child: Text(s.name.isEmpty ? '?' : s.name[0].toUpperCase(), style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Theme.of(context).colorScheme.primary)),
                     ),
-                  ],
+                    title: Text(s.name, style: Theme.of(context).textTheme.titleMedium),
+                    subtitle: Text(s.contact ?? '' , style: Theme.of(context).textTheme.bodyMedium),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          onPressed: () => _showAddEditSupplierSheet(context, supplier: s),
+                          icon: const Icon(Icons.edit),
+                        ),
+                        const SizedBox(width: 4),
+                        IconButton(
+                          onPressed: () => _deleteSupplierWithUndo(context, s),
+                          icon: const Icon(Icons.delete_outline),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               );
-            },
+              },
+            ),
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddSupplierDialog(context),
-        child: const Icon(Icons.add),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showAddEditSupplierSheet(context),
+        icon: const Icon(Icons.add),
+        label: Text(AppLocalizations.of(context)!.add),
       ),
     );
   }
 
-  void _showAddSupplierDialog(BuildContext context) {
-    final nameController = TextEditingController();
-    final contactController = TextEditingController();
-    final addressController = TextEditingController();
+  void _showAddEditSupplierSheet(BuildContext context, {supplier}) {
+    final nameController = TextEditingController(text: supplier?.name);
+    final contactController = TextEditingController(text: supplier?.contact);
+    final addressController = TextEditingController(text: supplier?.address);
+    final formKey = GlobalKey<FormState>();
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.addSupplierTitle),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: nameController, decoration: InputDecoration(labelText: AppLocalizations.of(context)!.supplierName)),
-            TextField(controller: contactController, decoration: InputDecoration(labelText: AppLocalizations.of(context)!.contact)),
-            TextField(controller: addressController, decoration: InputDecoration(labelText: AppLocalizations.of(context)!.address)),
-          ],
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (c) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(child: Container(width: 60, height: 6, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10)))),
+                const SizedBox(height: 12),
+                Text(supplier == null ? AppLocalizations.of(context)!.addSupplierTitle : AppLocalizations.of(context)!.editSupplierTitle,
+                    style: Theme.of(context).textTheme.headlineSmall, textAlign: TextAlign.center),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: nameController,
+                  decoration: InputDecoration(labelText: AppLocalizations.of(context)!.supplierName),
+                  validator: (value) => (value == null || value.trim().isEmpty) ? AppLocalizations.of(context)!.supplierNameRequired : null,
+                ),
+                const SizedBox(height: 8),
+                TextFormField(controller: contactController, decoration: InputDecoration(labelText: AppLocalizations.of(context)!.contact), keyboardType: TextInputType.phone),
+                const SizedBox(height: 8),
+                TextFormField(controller: addressController, decoration: InputDecoration(labelText: AppLocalizations.of(context)!.address)),
+                const SizedBox(height: 18),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(54), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
+                  onPressed: () async {
+                    if (!formKey.currentState!.validate()) return;
+                    final vm = context.read<SupplierViewModel>();
+                    if (supplier == null) {
+                      final success = await vm.addSupplier(name: nameController.text.trim(), contact: contactController.text.isEmpty ? null : contactController.text.trim(), address: addressController.text.isEmpty ? null : addressController.text.trim());
+                      if (success) {
+                        if (!mounted) return;
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.supplierAddedSuccess)));
+                      }
+                    } else {
+                      final updated = supplier.copyWith(name: nameController.text.trim(), contact: contactController.text.trim(), address: addressController.text.trim(), updatedAt: DateTime.now());
+                      final success = await vm.updateSupplier(updated);
+                      if (success) {
+                        if (!mounted) return;
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.supplierUpdatedSuccess)));
+                      }
+                    }
+                  },
+                  child: Text(supplier == null ? AppLocalizations.of(context)!.add : AppLocalizations.of(context)!.update),
+                ),
+                const SizedBox(height: 12),
+              ],
+            ),
+          ),
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(AppLocalizations.of(context)!.cancel)),
-          ElevatedButton(onPressed: () async {
-            final vm = context.read<SupplierViewModel>();
-            final success = await vm.addSupplier(name: nameController.text, contact: contactController.text.isEmpty ? null : contactController.text, address: addressController.text.isEmpty ? null : addressController.text);
-            if (success) {
-              if (!mounted) return;
-              Navigator.of(context).pop();
-            }
-          }, child: Text(AppLocalizations.of(context)!.add)),
-        ],
       ),
     );
   }
 
-  void _showEditSupplierDialog(BuildContext context, supplier) {
-    final nameController = TextEditingController(text: supplier.name);
-    final contactController = TextEditingController(text: supplier.contact);
-    final addressController = TextEditingController(text: supplier.address);
+  // Using the bottom sheet for both Add + Edit now. The old dialog is replaced.
 
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.editSupplierTitle),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: nameController, decoration: InputDecoration(labelText: AppLocalizations.of(context)!.supplierName)),
-            TextField(controller: contactController, decoration: InputDecoration(labelText: AppLocalizations.of(context)!.contact)),
-            TextField(controller: addressController, decoration: InputDecoration(labelText: AppLocalizations.of(context)!.address)),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(AppLocalizations.of(context)!.cancel)),
-          ElevatedButton(onPressed: () async {
-            final vm = context.read<SupplierViewModel>();
-            final updated = supplier.copyWith(name: nameController.text, contact: contactController.text, address: addressController.text, updatedAt: DateTime.now());
-            final success = await vm.updateSupplier(updated);
-            if (success) {
-              if (!mounted) return;
-              Navigator.of(context).pop();
-            }
-          }, child: Text(AppLocalizations.of(context)!.update)),
-        ],
-      ),
-    );
-  }
-
-  void _deleteSupplier(String id) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (c) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.confirmDeleteSupplier),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(AppLocalizations.of(context)!.cancel)),
-          ElevatedButton(onPressed: () => Navigator.pop(c, true), child: Text(AppLocalizations.of(context)!.delete)),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      final vm = context.read<SupplierViewModel>();
-      await vm.deleteSupplier(id);
+  Future<void> _deleteSupplierWithUndo(BuildContext context, supplier) async {
+    // Delete and show undo
+    final vm = context.read<SupplierViewModel>();
+    final deleted = supplier;
+    final success = await vm.deleteSupplier(supplier.id);
+    if (success) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('${deleted.name} - ${AppLocalizations.of(context)!.supplierDeletedSuccess}'),
+        action: SnackBarAction(label: AppLocalizations.of(context)!.undo, onPressed: () async {
+          await vm.addSupplier(name: deleted.name, contact: deleted.contact, address: deleted.address);
+        }),
+      ));
     }
+  }
+
+  Future<void> _handleDeleteWithUndo(BuildContext context, supplier) async {
+    await _deleteSupplierWithUndo(context, supplier);
   }
 }

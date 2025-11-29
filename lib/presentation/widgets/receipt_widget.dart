@@ -207,7 +207,7 @@ class ReceiptWidget extends StatelessWidget {
                           item.productName,
                           style: const TextStyle(
                             fontSize: 14,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                             color: Colors.black,
                           ),
                         ),

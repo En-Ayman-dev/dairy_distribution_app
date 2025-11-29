@@ -63,4 +63,10 @@
   "productLabel": "Product",
   "supplierLabel": "Supplier",
   "addPurchaseButtonLabel": "Add Purchase"
+  ,
+  "supplierNameRequired": "Supplier name is required",
+  "supplierAddedSuccess": "Supplier added successfully",
+  "supplierUpdatedSuccess": "Supplier updated successfully",
+  "supplierDeletedSuccess": "Supplier deleted successfully",
+  "undo": "Undo"
 }

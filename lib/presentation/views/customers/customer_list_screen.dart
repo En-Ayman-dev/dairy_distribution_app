@@ -172,7 +172,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
         ),
         title: Text(
           customer.name,
-          style: const TextStyle(fontWeight: FontWeight.w600),
+          style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -183,7 +183,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                 '${AppLocalizations.of(context)!.outstandingLabel}: ريال${customer.balance.toStringAsFixed(2)}',
                 style: const TextStyle(
                   color: Colors.red,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
           ],

@@ -229,7 +229,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                 value,
                 style: const TextStyle(
                   fontSize: 16,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
             ],
@@ -301,7 +301,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
         style: TextStyle(
           color: color,
           fontSize: 10,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );

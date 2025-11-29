@@ -67,4 +67,10 @@
   "productLabel": "المنتج",
   "supplierLabel": "المورد",
   "addPurchaseButtonLabel": "إضافة شراء"
+  ,
+  "supplierNameRequired": "اسم المورد مطلوب",
+  "supplierAddedSuccess": "تم إضافة المورد بنجاح",
+  "supplierUpdatedSuccess": "تم تحديث المورد بنجاح",
+  "supplierDeletedSuccess": "تم حذف المورد بنجاح",
+  "undo": "تراجع"
 }

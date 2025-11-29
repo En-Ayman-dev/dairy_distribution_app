@@ -43,7 +43,7 @@ class AppTheme {
         foregroundColor: Colors.white,
         titleTextStyle: _safeInterTextStyle(
           fontSize: 20,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
           color: Colors.white,
         ),
       ),
@@ -68,7 +68,7 @@ class AppTheme {
           ),
           textStyle: const TextStyle(
             fontSize: 16,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ),
@@ -92,7 +92,7 @@ class AppTheme {
         centerTitle: true,
         titleTextStyle: _safeInterTextStyle(
           fontSize: 20,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
         ),
       ),
       cardTheme: CardThemeData(
