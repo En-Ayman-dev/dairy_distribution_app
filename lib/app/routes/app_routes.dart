@@ -15,6 +15,13 @@ class AppRoutes {
   static const String productList = '/products';
   static const String productDetail = '/products/detail';
   static const String addProduct = '/products/add';
+  // Supplier Routes
+  static const String supplierList = '/suppliers';
+  static const String supplierDetail = '/suppliers/detail';
+  static const String addSupplier = '/suppliers/add';
+
+  // Purchase Routes
+  static const String addPurchase = '/purchases/add';
   
   // Distribution Routes
   static const String distributionList = '/distributions';

@@ -13,6 +13,8 @@ import 'core/utils/service_locator.dart';
 import 'presentation/viewmodels/auth_viewmodel.dart';
 import 'presentation/viewmodels/customer_viewmodel.dart';
 import 'presentation/viewmodels/product_viewmodel.dart';
+import 'presentation/viewmodels/supplier_viewmodel.dart';
+import 'presentation/viewmodels/purchase_viewmodel.dart';
 import 'presentation/viewmodels/distribution_viewmodel.dart';
 import 'presentation/viewmodels/report_viewmodel.dart';
 import 'presentation/views/auth/login_screen.dart';
@@ -22,6 +24,8 @@ import 'presentation/views/customers/customer_list_screen.dart';
 import 'presentation/views/customers/customer_detail_screen.dart';
 import 'presentation/views/customers/add_customer_screen.dart';
 import 'presentation/views/products/product_list_screen.dart';
+import 'presentation/views/suppliers/supplier_list_screen.dart';
+import 'presentation/views/purchases/add_purchase_screen.dart';
 import 'presentation/views/reports/reports_screen.dart';
 import 'presentation/views/distribution/distribution_list_screen.dart';
 import 'presentation/views/distribution/add_distribution_screen.dart';
@@ -78,6 +82,8 @@ void main() async {
         provider.ChangeNotifierProvider(create: (_) => getIt<AuthViewModel>()),
         provider.ChangeNotifierProvider(create: (_) => getIt<CustomerViewModel>()),
         provider.ChangeNotifierProvider(create: (_) => getIt<ProductViewModel>()),
+        provider.ChangeNotifierProvider(create: (_) => getIt<SupplierViewModel>()),
+        provider.ChangeNotifierProvider(create: (_) => getIt<PurchaseViewModel>()),
         provider.ChangeNotifierProvider(create: (_) => getIt<DistributionViewModel>()),
         provider.ChangeNotifierProvider(create: (_) => getIt<ReportViewModel>()),
       ],
@@ -134,6 +140,13 @@ class MyApp extends riverpod.ConsumerWidget {
               );
             case AppRoutes.productList:
               return MaterialPageRoute(builder: (_) => const ProductListScreen());
+            case AppRoutes.supplierList:
+              return MaterialPageRoute(builder: (_) => const SupplierListScreen());
+            case AppRoutes.addPurchase:
+              final arg = settings.arguments;
+              String? productId;
+              if (arg is String) productId = arg;
+              return MaterialPageRoute(builder: (_) => AddPurchaseScreen(productId: productId));
             case AppRoutes.distributionList:
               return MaterialPageRoute(
                 builder: (_) => const DistributionListScreen(),

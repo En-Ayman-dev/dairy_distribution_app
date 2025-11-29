@@ -49,4 +49,18 @@
   "partial": "Partial",
   "pending": "Pending",
   "logout_confirm": "Are you sure you want to logout?"
+  ,
+  "suppliersTitle": "Suppliers",
+  "noSuppliersFound": "No suppliers found",
+  "supplierName": "Supplier Name",
+  "addSupplierTitle": "Add Supplier",
+  "editSupplierTitle": "Edit Supplier",
+  "confirmDeleteSupplier": "Confirm Delete Supplier",
+  "contact": "Contact",
+  "address": "Address",
+  "delete": "Delete",
+  "addPurchaseTitle": "Add Purchase",
+  "productLabel": "Product",
+  "supplierLabel": "Supplier",
+  "addPurchaseButtonLabel": "Add Purchase"
 }

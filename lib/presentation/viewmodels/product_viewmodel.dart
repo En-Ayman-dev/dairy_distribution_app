@@ -62,8 +62,6 @@ class ProductViewModel extends ChangeNotifier {
     required String name,
     required ProductCategory category,
     required String unit,
-    required double price,
-    double stock = 0.0,
     double minStock = 0.0,
   }) async {
     final product = Product(
@@ -71,8 +69,8 @@ class ProductViewModel extends ChangeNotifier {
       name: name,
       category: category,
       unit: unit,
-      price: price,
-      stock: stock,
+      price: 0.0, // set to 0.0 and will be updated via purchases
+      stock: 0.0,
       minStock: minStock,
       status: ProductStatus.active,
       createdAt: DateTime.now(),

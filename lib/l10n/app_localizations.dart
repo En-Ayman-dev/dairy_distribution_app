@@ -203,6 +203,21 @@ class AppLocalizations {
   String get noPendingDistributions => locale.languageCode == 'ar' ? 'لا توجد توزيعات معلقة' : 'No pending distributions';
   String get noCustomersWithOutstanding => locale.languageCode == 'ar' ? 'لا يوجد عملاء بمبالغ مستحقة' : 'No customers with outstanding balances';
   String get noPendingDistributionsForCustomer => locale.languageCode == 'ar' ? 'لا توجد توزيعات معلقة لهذا العميل' : 'No pending distributions for this customer';
+
+  // Suppliers & Purchases
+  String get suppliersTitle => locale.languageCode == 'ar' ? 'الموردين' : 'Suppliers';
+  String get noSuppliersFound => locale.languageCode == 'ar' ? 'لا يوجد موردين' : 'No suppliers found';
+  String get supplierName => locale.languageCode == 'ar' ? 'اسم المورد' : 'Supplier Name';
+  String get addSupplierTitle => locale.languageCode == 'ar' ? 'إضافة مورد' : 'Add Supplier';
+  String get editSupplierTitle => locale.languageCode == 'ar' ? 'تعديل مورد' : 'Edit Supplier';
+  String get confirmDeleteSupplier => locale.languageCode == 'ar' ? 'تأكيد حذف المورد' : 'Confirm Delete Supplier';
+  String get contact => locale.languageCode == 'ar' ? 'التواصل' : 'Contact';
+  String get address => locale.languageCode == 'ar' ? 'العنوان' : 'Address';
+  String get delete => locale.languageCode == 'ar' ? 'حذف' : 'Delete';
+  String get addPurchaseTitle => locale.languageCode == 'ar' ? 'إضافة عملية شراء' : 'Add Purchase';
+  String get productLabel => locale.languageCode == 'ar' ? 'المنتج' : 'Product';
+  String get supplierLabel => locale.languageCode == 'ar' ? 'المورد' : 'Supplier';
+  String get addPurchaseButtonLabel => locale.languageCode == 'ar' ? 'إضافة شراء' : 'Add Purchase';
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

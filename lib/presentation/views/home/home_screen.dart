@@ -235,6 +235,13 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         ),
         QuickActionCard(
+          icon: Icons.inventory_2_outlined,
+          label: 'Suppliers',
+          onTap: () {
+            Navigator.pushNamed(context, AppRoutes.supplierList);
+          },
+        ),
+        QuickActionCard(
           icon: Icons.people,
           label: AppLocalizations.of(context)!.quickCustomers,
           onTap: () {

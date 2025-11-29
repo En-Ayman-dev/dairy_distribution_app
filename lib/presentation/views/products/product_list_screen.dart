@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../viewmodels/product_viewmodel.dart';
+import '../purchases/add_purchase_screen.dart';
 import '../../../domain/entities/product.dart';
 import '../../../app/themes/app_colors.dart';
 import '../../../l10n/app_localizations.dart';
@@ -295,8 +296,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   void _showAddProductDialog(BuildContext context) {
     final nameController = TextEditingController();
-    final priceController = TextEditingController();
-    final stockController = TextEditingController();
+              // initial price and stock are now handled from purchases; no priceController used here
+              // initial stock is not specified anymore during product creation
     final minStockController = TextEditingController();
     final unitController = TextEditingController(text: 'Liters');
     ProductCategory selectedCategory = ProductCategory.milk;
@@ -332,17 +333,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 decoration: InputDecoration(labelText: AppLocalizations.of(context)!.unitLabel),
               ),
               const SizedBox(height: 8),
-              TextField(
-                controller: priceController,
-                decoration: InputDecoration(labelText: AppLocalizations.of(context)!.priceLabel),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: stockController,
-                decoration: InputDecoration(labelText: AppLocalizations.of(context)!.initialStockLabel),
-                keyboardType: TextInputType.number,
-              ),
+              // Note: price and initial stock moved to supplier purchase flow
               const SizedBox(height: 8),
               TextField(
                 controller: minStockController,
@@ -357,15 +348,13 @@ class _ProductListScreenState extends State<ProductListScreen> {
             onPressed: () => Navigator.pop(dialogContext),
             child: Text(AppLocalizations.of(context)!.cancel),
           ),
-          ElevatedButton(
+              ElevatedButton(
             onPressed: () async {
               final vm = this.context.read<ProductViewModel>();
               final success = await vm.addProduct(
                     name: nameController.text,
                     category: selectedCategory,
                     unit: unitController.text,
-                    price: double.parse(priceController.text),
-                    stock: double.parse(stockController.text),
                     minStock: double.parse(minStockController.text),
                   );
 
@@ -412,59 +401,16 @@ class _ProductListScreenState extends State<ProductListScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              _showUpdateStockDialog(context, product);
+              // Move to Add Purchase screen to link purchase with supplier
+              Navigator.of(context).push(MaterialPageRoute(builder: (c) => AddPurchaseScreen(productId: product.id)));
             },
-            child: Text(AppLocalizations.of(context)!.updateStockTitle),
+            child: Text(AppLocalizations.of(context)!.addPurchaseButtonLabel),
           ),
         ],
       ),
     );
   }
 
-  void _showUpdateStockDialog(BuildContext context, Product product) {
-    final controller = TextEditingController();
-    showDialog(
-      context: this.context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.updateStockTitle),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('${AppLocalizations.of(context)!.currentStockPrefix} ${product.stock} ${product.unit}'),
-            const SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                decoration: InputDecoration(
-                  labelText: '${AppLocalizations.of(context)!.add}/${AppLocalizations.of(context)!.update} Quantity',
-                  helperText: 'Use negative value to reduce stock',
-                ),
-              keyboardType: TextInputType.number,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text(AppLocalizations.of(context)!.cancel),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final vm = this.context.read<ProductViewModel>();
-              final quantity = double.parse(controller.text);
-              await vm.updateStock(
-                    product.id,
-                    quantity,
-                  );
-
-              if (!mounted) return;
-
-              // Use the State's Navigator to close the dialog safely.
-              Navigator.of(this.context).pop();
-            },
-            child: Text(AppLocalizations.of(context)!.update),
-          ),
-        ],
-      ),
-    );
-  }
+  // Stock updates are now handled through the purchase flow which creates
+  // a purchase record and updates product stock via transactions.
 }

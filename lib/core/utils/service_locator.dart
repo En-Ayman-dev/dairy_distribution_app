@@ -9,16 +9,22 @@ import 'package:uuid/uuid.dart';
 import '../../data/datasources/remote/customer_remote_datasource.dart';
 import '../../data/datasources/remote/product_remote_datasource.dart';
 import '../../data/datasources/remote/distribution_remote_datasource.dart';
+import '../../data/datasources/remote/supplier_remote_datasource.dart';
+import '../../data/datasources/remote/purchase_remote_datasource.dart';
 
 // --- Repositories ---
 import '../../data/repositories/customer_repository_impl.dart';
 import '../../data/repositories/product_repository_impl.dart';
 import '../../data/repositories/distribution_repository_impl.dart';
+import '../../data/repositories/supplier_repository_impl.dart';
+import '../../data/repositories/purchase_repository_impl.dart';
 
 // --- Domain Interfaces ---
 import '../../domain/repositories/customer_repository.dart';
 import '../../domain/repositories/product_repository.dart';
 import '../../domain/repositories/distribution_repository.dart';
+import '../../domain/repositories/supplier_repository.dart';
+import '../../domain/repositories/purchase_repository.dart';
 
 // --- ViewModels ---
 import '../../presentation/viewmodels/auth_viewmodel.dart';
@@ -26,6 +32,8 @@ import '../../presentation/viewmodels/customer_viewmodel.dart';
 import '../../presentation/viewmodels/product_viewmodel.dart';
 import '../../presentation/viewmodels/distribution_viewmodel.dart';
 import '../../presentation/viewmodels/report_viewmodel.dart';
+import '../../presentation/viewmodels/supplier_viewmodel.dart';
+import '../../presentation/viewmodels/purchase_viewmodel.dart';
 
 final getIt = GetIt.instance;
 
@@ -48,6 +56,8 @@ Future<void> setupServiceLocator() async {
   getIt.registerLazySingleton<ProductRemoteDataSource>(
     () => ProductRemoteDataSourceImpl(getIt()),
   );
+  getIt.registerLazySingleton<SupplierRemoteDataSource>(() => SupplierRemoteDataSourceImpl(getIt()));
+  getIt.registerLazySingleton<PurchaseRemoteDataSource>(() => PurchaseRemoteDataSourceImpl(getIt()));
   getIt.registerLazySingleton<DistributionRemoteDataSource>(
     () => DistributionRemoteDataSourceImpl(getIt()),
   );
@@ -74,6 +84,14 @@ Future<void> setupServiceLocator() async {
         productRemoteDataSource: getIt(),
         firebaseAuth: getIt(),
       ));
+  getIt.registerLazySingleton<SupplierRepository>(() => SupplierRepositoryImpl(
+        remoteDataSource: getIt(),
+        firebaseAuth: getIt(),
+      ));
+  getIt.registerLazySingleton<PurchaseRepository>(() => PurchaseRepositoryImpl(
+        remoteDataSource: getIt(),
+        firebaseAuth: getIt(),
+      ));
 
   // ---------------------------------------------------------------------------
   // 4. ViewModels
@@ -85,6 +103,9 @@ Future<void> setupServiceLocator() async {
   
   getIt.registerFactory(() => ProductViewModel(getIt(), getIt()));
   getIt.registerFactory(() => DistributionViewModel(getIt(), getIt()));
+  getIt.registerFactory(() => SupplierViewModel(getIt(), getIt()));
+  getIt.registerFactory(() => PurchaseViewModel(getIt(), getIt()));
+  // TODO: Register Supplier & Purchase ViewModels when implemented
   
   getIt.registerFactory(() => ReportViewModel(
         getIt<DistributionRepository>(),

@@ -53,4 +53,18 @@
   "partial": "جزئي",
   "pending": "قيد الانتظار",
   "logout_confirm": "هل تريد بالتأكيد تسجيل الخروج؟"
+  ,
+  "suppliersTitle": "الموردين",
+  "noSuppliersFound": "لا يوجد موردين",
+  "supplierName": "اسم المورد",
+  "addSupplierTitle": "إضافة مورد",
+  "editSupplierTitle": "تعديل مورد",
+  "confirmDeleteSupplier": "تأكيد حذف المورد",
+  "contact": "التواصل",
+  "address": "العنوان",
+  "delete": "حذف",
+  "addPurchaseTitle": "إضافة عملية شراء",
+  "productLabel": "المنتج",
+  "supplierLabel": "المورد",
+  "addPurchaseButtonLabel": "إضافة شراء"
 }
