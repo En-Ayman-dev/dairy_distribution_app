@@ -612,4 +612,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get shareLabel => 'Share';
+
+  @override
+  String get purchaseListTitle => 'Purchase History';
 }

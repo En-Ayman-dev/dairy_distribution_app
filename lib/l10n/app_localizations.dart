@@ -1300,6 +1300,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Share'**
   String get shareLabel;
+
+  /// No description provided for @purchaseListTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchase History'**
+  String get purchaseListTitle;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

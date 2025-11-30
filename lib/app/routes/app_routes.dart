@@ -1,4 +1,3 @@
-
 class AppRoutes {
   static const String splash = '/';
   static const String login = '/login';
@@ -21,6 +20,7 @@ class AppRoutes {
   static const String addSupplier = '/suppliers/add';
 
   // Purchase Routes
+  static const String purchaseList = '/purchases'; // --- تم إضافة المسار الجديد ---
   static const String addPurchase = '/purchases/add';
   
   // Distribution Routes

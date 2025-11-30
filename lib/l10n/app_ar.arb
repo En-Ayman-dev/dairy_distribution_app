@@ -222,5 +222,6 @@
   "themeLabel": "السمة",
   "lightModeLabel": "الوضع الفاتح",
   "darkModeLabel": "الوضع الداكن",
+  "purchaseListTitle": "سجل المشتريات",
   "testFirestoreAccess": "اختبار الوصول إلى Firestore"
 }

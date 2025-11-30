@@ -612,4 +612,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get shareLabel => 'مشاركة';
+
+  @override
+  String get purchaseListTitle => 'سجل المشتريات';
 }

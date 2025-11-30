@@ -26,6 +26,8 @@ import 'presentation/views/customers/add_customer_screen.dart';
 import 'presentation/views/products/product_list_screen.dart';
 import 'presentation/views/suppliers/supplier_list_screen.dart';
 import 'presentation/views/purchases/add_purchase_screen.dart';
+// --- استيراد شاشة قائمة المشتريات الجديدة ---
+import 'presentation/views/purchases/purchase_list_screen.dart';
 import 'presentation/views/reports/reports_screen.dart';
 import 'presentation/views/distribution/distribution_list_screen.dart';
 import 'presentation/views/distribution/add_distribution_screen.dart';
@@ -142,6 +144,8 @@ class MyApp extends riverpod.ConsumerWidget {
               return MaterialPageRoute(builder: (_) => const ProductListScreen());
             case AppRoutes.supplierList:
               return MaterialPageRoute(builder: (_) => const SupplierListScreen());
+            case AppRoutes.purchaseList: // --- المسار الجديد ---
+              return MaterialPageRoute(builder: (_) => const PurchaseListScreen());
             case AppRoutes.addPurchase:
               final arg = settings.arguments;
               String? productId;

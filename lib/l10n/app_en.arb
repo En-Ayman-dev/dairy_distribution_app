@@ -222,5 +222,6 @@
   "darkModeLabel": "Dark mode",
   "testFirestoreAccess": "Test Firestore access"
 ,
-  "shareLabel": "Share"
+  "shareLabel": "Share",
+  "purchaseListTitle": "Purchase History"
 }

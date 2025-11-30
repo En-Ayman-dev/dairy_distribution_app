@@ -1,3 +1,4 @@
+import 'dart:async'; // إضافة مكتبة async للتعامل مع StreamSubscription
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../../domain/entities/purchase.dart';
@@ -8,6 +9,9 @@ enum PurchaseViewState { initial, loading, loaded, error }
 class PurchaseViewModel extends ChangeNotifier {
   final PurchaseRepository _repository;
   final Uuid _uuid;
+  
+  // متغير لحفظ الاشتراك في Stream
+  StreamSubscription? _purchasesSubscription;
 
   PurchaseViewModel(this._repository, this._uuid);
 
@@ -24,6 +28,29 @@ class PurchaseViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  // --- دالة جديدة للاستماع لكل المشتريات (لسجل الفواتير) ---
+  void listenToAllPurchases() {
+    _setState(PurchaseViewState.loading);
+    
+    // إلغاء أي اشتراك سابق لتجنب التكرار
+    _purchasesSubscription?.cancel();
+
+    _purchasesSubscription = _repository.watchPurchases().listen((event) {
+      event.fold(
+        (failure) {
+          _errorMessage = failure.message;
+          _setState(PurchaseViewState.error);
+        },
+        (data) {
+          _purchases = data;
+          // فرز القائمة بحيث تظهر الأحدث أولاً
+          _purchases.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          _setState(PurchaseViewState.loaded);
+        },
+      );
+    });
+  }
+
   Future<void> loadPurchasesForProduct(String productId) async {
     _setState(PurchaseViewState.loading);
     final result = await _repository.getPurchasesForProduct(productId);
@@ -32,16 +59,17 @@ class PurchaseViewModel extends ChangeNotifier {
       _setState(PurchaseViewState.error);
     }, (data) {
       _purchases = data;
+      // فرز القائمة للأحدث أولاً أيضاً
+      _purchases.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       _setState(PurchaseViewState.loaded);
     });
   }
 
-  // تم تحديث الدالة لإضافة freeQuantity كمعامل اختياري
   Future<bool> addPurchase({
     required String productId,
     required String supplierId,
     required double quantity,
-    double freeQuantity = 0.0, // القيمة الافتراضية 0
+    double freeQuantity = 0.0,
     required double price,
   }) async {
     final purchase = Purchase(
@@ -49,7 +77,7 @@ class PurchaseViewModel extends ChangeNotifier {
       productId: productId,
       supplierId: supplierId,
       quantity: quantity,
-      freeQuantity: freeQuantity, // تمرير الكمية المجانية
+      freeQuantity: freeQuantity,
       price: price,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
@@ -61,8 +89,19 @@ class PurchaseViewModel extends ChangeNotifier {
       notifyListeners();
       return false;
     }, (id) {
-      loadPurchasesForProduct(productId);
+      // إذا كنا في صفحة تفاصيل المنتج، نحدث القائمة الخاصة به
+      // أما إذا كنا نستمع للكل (Stream)، فالتحديث سيتم تلقائياً
+      if (_purchasesSubscription == null) {
+          loadPurchasesForProduct(productId);
+      }
       return true;
     });
+  }
+
+  @override
+  void dispose() {
+    // تنظيف الاشتراك عند إغلاق الـ ViewModel
+    _purchasesSubscription?.cancel();
+    super.dispose();
   }
 }

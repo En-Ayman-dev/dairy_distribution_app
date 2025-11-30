@@ -236,7 +236,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         QuickActionCard(
           icon: Icons.inventory_2_outlined,
-          label: 'Suppliers',
+          label: AppLocalizations.of(context)!.suppliersTitle, // تم تصحيح النص الثابت لاستخدام الترجمة إذا كانت متاحة
           onTap: () {
             Navigator.pushNamed(context, AppRoutes.supplierList);
           },
@@ -253,6 +253,14 @@ class _HomeScreenState extends State<HomeScreen> {
           label: AppLocalizations.of(context)!.quickProducts,
           onTap: () {
             Navigator.pushNamed(context, AppRoutes.productList);
+          },
+        ),
+        // --- الزر الجديد: سجل المشتريات ---
+        QuickActionCard(
+          icon: Icons.receipt_long,
+          label: AppLocalizations.of(context)!.purchaseListTitle,
+          onTap: () {
+            Navigator.pushNamed(context, AppRoutes.purchaseList);
           },
         ),
         QuickActionCard(
