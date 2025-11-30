@@ -6,6 +6,7 @@ class Purchase extends Equatable {
   final String supplierId;
   final double quantity;
   final double freeQuantity; // الكمية المجانية (الإضافية)
+  final double returnedQuantity; // الكمية المرتجعة/التالفة (جديد)
   final double price; // purchase price
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -16,6 +17,7 @@ class Purchase extends Equatable {
     required this.supplierId,
     required this.quantity,
     this.freeQuantity = 0.0, // القيمة الافتراضية 0
+    this.returnedQuantity = 0.0, // القيمة الافتراضية 0 للكمية المرتجعة
     required this.price,
     required this.createdAt,
     required this.updatedAt,
@@ -27,6 +29,7 @@ class Purchase extends Equatable {
     String? supplierId,
     double? quantity,
     double? freeQuantity,
+    double? returnedQuantity,
     double? price,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -37,6 +40,7 @@ class Purchase extends Equatable {
       supplierId: supplierId ?? this.supplierId,
       quantity: quantity ?? this.quantity,
       freeQuantity: freeQuantity ?? this.freeQuantity,
+      returnedQuantity: returnedQuantity ?? this.returnedQuantity,
       price: price ?? this.price,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -50,6 +54,7 @@ class Purchase extends Equatable {
         supplierId,
         quantity,
         freeQuantity,
+        returnedQuantity,
         price,
         createdAt,
         updatedAt,

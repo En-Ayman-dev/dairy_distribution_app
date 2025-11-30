@@ -6,7 +6,8 @@ class PurchaseModel extends Purchase {
     required super.productId,
     required super.supplierId,
     required super.quantity,
-    super.freeQuantity, // إضافة الحقل هنا (اختياري لأنه يملك قيمة افتراضية في الكيان)
+    super.freeQuantity, 
+    super.returnedQuantity,
     required super.price,
     required super.createdAt,
     required super.updatedAt,
@@ -14,15 +15,20 @@ class PurchaseModel extends Purchase {
 
   factory PurchaseModel.fromJson(Map<String, dynamic> json) {
     return PurchaseModel(
-      id: json['id'] as String,
-      productId: json['product_id'] as String,
-      supplierId: json['supplier_id'] as String,
-      quantity: (json['quantity'] as num).toDouble(),
-      // قراءة الكمية المجانية مع قيمة افتراضية 0 إذا كانت null
+      id: json['id'] as String? ?? '', // حماية ضد null في المعرف
+      productId: json['product_id'] as String? ?? '',
+      supplierId: json['supplier_id'] as String? ?? '',
+      // استخدام التحويل الآمن (Safe Casting) للكمية والسعر
+      quantity: (json['quantity'] as num?)?.toDouble() ?? 0.0,
       freeQuantity: (json['free_quantity'] as num?)?.toDouble() ?? 0.0,
-      price: (json['price'] as num).toDouble(),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      returnedQuantity: (json['returned_quantity'] as num?)?.toDouble() ?? 0.0,
+      price: (json['price'] as num?)?.toDouble() ?? 0.0,
+      createdAt: json['created_at'] != null 
+          ? DateTime.parse(json['created_at'] as String) 
+          : DateTime.now(), // حماية التاريخ
+      updatedAt: json['updated_at'] != null 
+          ? DateTime.parse(json['updated_at'] as String) 
+          : DateTime.now(),
     );
   }
 
@@ -32,7 +38,8 @@ class PurchaseModel extends Purchase {
       'product_id': productId,
       'supplier_id': supplierId,
       'quantity': quantity,
-      'free_quantity': freeQuantity, // تخزين الكمية المجانية
+      'free_quantity': freeQuantity,
+      'returned_quantity': returnedQuantity,
       'price': price,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
@@ -41,14 +48,19 @@ class PurchaseModel extends Purchase {
 
   factory PurchaseModel.fromMap(Map<String, dynamic> map) {
     return PurchaseModel(
-      id: map['id'] as String,
-      productId: map['product_id'] as String,
-      supplierId: map['supplier_id'] as String,
-      quantity: (map['quantity'] as num).toDouble(),
+      id: map['id'] as String? ?? '',
+      productId: map['product_id'] as String? ?? '',
+      supplierId: map['supplier_id'] as String? ?? '',
+      quantity: (map['quantity'] as num?)?.toDouble() ?? 0.0,
       freeQuantity: (map['free_quantity'] as num?)?.toDouble() ?? 0.0,
-      price: (map['price'] as num).toDouble(),
-      createdAt: DateTime.parse(map['created_at'] as String),
-      updatedAt: DateTime.parse(map['updated_at'] as String),
+      returnedQuantity: (map['returned_quantity'] as num?)?.toDouble() ?? 0.0,
+      price: (map['price'] as num?)?.toDouble() ?? 0.0,
+      createdAt: map['created_at'] != null 
+          ? DateTime.parse(map['created_at'] as String) 
+          : DateTime.now(),
+      updatedAt: map['updated_at'] != null 
+          ? DateTime.parse(map['updated_at'] as String) 
+          : DateTime.now(),
     );
   }
 
@@ -59,6 +71,7 @@ class PurchaseModel extends Purchase {
       'supplier_id': supplierId,
       'quantity': quantity,
       'free_quantity': freeQuantity,
+      'returned_quantity': returnedQuantity,
       'price': price,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
@@ -74,6 +87,7 @@ class PurchaseModel extends Purchase {
       supplierId: purchase.supplierId,
       quantity: purchase.quantity,
       freeQuantity: purchase.freeQuantity,
+      returnedQuantity: purchase.returnedQuantity,
       price: purchase.price,
       createdAt: purchase.createdAt,
       updatedAt: purchase.updatedAt,

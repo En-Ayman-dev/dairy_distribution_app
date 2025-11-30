@@ -98,9 +98,24 @@ class PurchaseViewModel extends ChangeNotifier {
     });
   }
 
+  // --- دالة جديدة لمعالجة المرتجع ---
+  Future<bool> returnPurchase({required String purchaseId, required double quantity}) async {
+    // لا نقوم بتغيير الحالة إلى loading هنا لأننا نريد تجربة مستخدم سلسة (مربع حوار)
+    // التحديث سيأتي عبر الـ Stream
+    final result = await _repository.processReturn(purchaseId, quantity);
+    
+    return result.fold((failure) {
+      _errorMessage = failure.message;
+      notifyListeners(); // لإظهار رسالة الخطأ في الواجهة إذا لزم الأمر
+      return false;
+    }, (_) {
+      // نجاح العملية
+      return true;
+    });
+  }
+
   @override
   void dispose() {
-    // تنظيف الاشتراك عند إغلاق الـ ViewModel
     _purchasesSubscription?.cancel();
     super.dispose();
   }

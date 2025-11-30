@@ -53,4 +53,17 @@ class PurchaseRepositoryImpl implements PurchaseRepository {
       return Stream.value(Left(ServerFailure('Failed to watch purchases')));
     }
   }
+
+  // --- تنفيذ الدالة الجديدة للمرتجعات ---
+  @override
+  Future<Either<Failure, void>> processReturn(String purchaseId, double quantity) async {
+    if (!_isAuthenticated) return Left(AuthenticationFailure('User not authenticated'));
+    try {
+      await remoteDataSource.processReturn(_userId, purchaseId, quantity);
+      return const Right(null);
+    } catch (e) {
+      developer.log('Failed to process return', error: e, name: 'PurchaseRepository');
+      return Left(ServerFailure(e.toString()));
+    }
+  }
 }
