@@ -1,13 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:developer' as developer;
 import '../../models/purchase_model.dart';
+import '../../models/purchase_item_model.dart'; 
 import '../../../core/constants/firebase_constants.dart';
 
 abstract class PurchaseRemoteDataSource {
   Future<List<PurchaseModel>> getPurchasesForProduct(String userId, String productId);
   Future<String> addPurchase(String userId, PurchaseModel purchase);
   Stream<List<PurchaseModel>> watchPurchases(String userId);
-  Future<void> processReturn(String userId, String purchaseId, double returnQuantity);
+  Future<void> processReturn(String userId, String purchaseId, String productId, double returnQuantity);
 }
 
 class PurchaseRemoteDataSourceImpl implements PurchaseRemoteDataSource {
@@ -32,8 +33,13 @@ class PurchaseRemoteDataSourceImpl implements PurchaseRemoteDataSource {
   @override
   Future<List<PurchaseModel>> getPurchasesForProduct(String userId, String productId) async {
     try {
-      final snapshot = await _purchasesCollection(userId).where('product_id', isEqualTo: productId).get();
-      return snapshot.docs.map((doc) => PurchaseModel.fromJson(doc.data() as Map<String, dynamic>)).toList();
+      final snapshot = await _purchasesCollection(userId)
+          .where('product_ids', arrayContains: productId)
+          .get();
+      
+      return snapshot.docs
+          .map((doc) => PurchaseModel.fromJson(doc.data() as Map<String, dynamic>))
+          .toList();
     } catch (e) {
       developer.log('getPurchasesForProduct failed', name: 'PurchaseRemoteDataSource', error: e);
       rethrow;
@@ -46,25 +52,47 @@ class PurchaseRemoteDataSourceImpl implements PurchaseRemoteDataSource {
       final docRef = _purchasesCollection(userId).doc(purchase.id);
 
       await firestore.runTransaction((transaction) async {
-        final productDocRef = _productsCollection(userId).doc(purchase.productId);
-        final productSnapshot = await transaction.get(productDocRef);
-        if (!productSnapshot.exists) {
-          throw Exception('Product not found');
+        // --- 1. مرحلة القراءة (Read Phase) ---
+        // نقوم بجمع كل المراجع (References) للمنتجات أولاً
+        // وقراءتها جميعاً قبل القيام بأي عملية كتابة
+        Map<String, DocumentSnapshot> productSnapshots = {};
+
+        for (var item in purchase.items) {
+          final productDocRef = _productsCollection(userId).doc(item.productId);
+          final snapshot = await transaction.get(productDocRef);
+          productSnapshots[item.productId] = snapshot;
         }
 
-        final currentStock = (productSnapshot.data() as Map<String, dynamic>?)?['stock'] as num? ?? 0.0;
-        
-        // إضافة الكمية المشتراة + الكمية المجانية إلى المخزون
-        final newStock = (currentStock).toDouble() + purchase.quantity + purchase.freeQuantity;
+        // --- 2. مرحلة الكتابة (Write Phase) ---
+        // الآن نقوم بالحسابات والتحديثات بناءً على البيانات التي قرأناها
+        for (var item in purchase.items) {
+          final snapshot = productSnapshots[item.productId];
+          
+          if (snapshot == null || !snapshot.exists) {
+            throw Exception('Product ${item.productId} not found');
+          }
 
-        // update product's stock and price (update price to latest purchase price)
-        transaction.set(docRef, purchase.toJson());
-        transaction.update(productDocRef, {
-          'stock': newStock,
-          'price': purchase.price,
-          'updated_at': DateTime.now().toIso8601String(),
-        });
+          final productDocRef = _productsCollection(userId).doc(item.productId);
+          final currentStock = (snapshot.data() as Map<String, dynamic>?)?['stock'] as num? ?? 0.0;
+          
+          // حساب المخزون الجديد
+          final newStock = (currentStock).toDouble() + item.quantity + item.freeQuantity;
+
+          // تنفيذ التحديث (Write)
+          transaction.update(productDocRef, {
+            'stock': newStock,
+            'price': item.price, 
+            'updated_at': DateTime.now().toIso8601String(),
+          });
+        }
+
+        // وأخيراً حفظ الفاتورة (Write)
+        final purchaseData = purchase.toJson();
+        purchaseData['product_ids'] = purchase.items.map((e) => e.productId).toList();
+
+        transaction.set(docRef, purchaseData);
       });
+      
       return purchase.id;
     } catch (e) {
       developer.log('addPurchase failed', name: 'PurchaseRemoteDataSource', error: e);
@@ -74,7 +102,10 @@ class PurchaseRemoteDataSourceImpl implements PurchaseRemoteDataSource {
 
   @override
   Stream<List<PurchaseModel>> watchPurchases(String userId) {
-    return _purchasesCollection(userId).snapshots().map(
+    return _purchasesCollection(userId)
+        .orderBy('created_at', descending: true)
+        .snapshots()
+        .map(
           (snapshot) => snapshot.docs
               .map((doc) => PurchaseModel.fromJson(doc.data() as Map<String, dynamic>))
               .toList(),
@@ -84,63 +115,75 @@ class PurchaseRemoteDataSourceImpl implements PurchaseRemoteDataSource {
     });
   }
 
-  // --- دالة معالجة المرتجعات (تم التحديث لإضافة شرط المخزون) ---
   @override
-  Future<void> processReturn(String userId, String purchaseId, double returnQuantity) async {
+  Future<void> processReturn(String userId, String purchaseId, String productId, double returnQuantity) async {
     try {
       final purchaseRef = _purchasesCollection(userId).doc(purchaseId);
 
       await firestore.runTransaction((transaction) async {
-        // 1. قراءة الفاتورة الحالية
+        // 1. قراءة الفاتورة (Read)
         final purchaseSnapshot = await transaction.get(purchaseRef);
         if (!purchaseSnapshot.exists) {
-          throw Exception('Purchase not found');
+          throw Exception('Purchase invoice not found');
         }
 
         final purchaseData = purchaseSnapshot.data() as Map<String, dynamic>;
         final purchase = PurchaseModel.fromJson(purchaseData);
 
-        // 2. قراءة المنتج لتحديث المخزون والتحقق منه
-        final productDocRef = _productsCollection(userId).doc(purchase.productId);
+        // 2. قراءة المنتج (Read)
+        final productDocRef = _productsCollection(userId).doc(productId);
         final productSnapshot = await transaction.get(productDocRef);
         if (!productSnapshot.exists) {
-           throw Exception('Product associated with purchase not found');
+           throw Exception('Product document not found');
         }
+
+        // --- انتهت مرحلة القراءة، نبدأ المنطق والحسابات ---
+
+        // العثور على العنصر المستهدف
+        final itemIndex = purchase.items.indexWhere((item) => item.productId == productId);
+        if (itemIndex == -1) {
+          throw Exception('Product not found in this invoice');
+        }
+        final targetItem = purchase.items[itemIndex];
+
+        // التحقق من الكميات
+        final totalItemQuantity = targetItem.quantity + targetItem.freeQuantity;
+        final availableToReturn = totalItemQuantity - targetItem.returnedQuantity;
         
+        if (returnQuantity > availableToReturn) {
+          throw Exception('الكمية المراد إرجاعها تتجاوز الكمية المتاحة في الفاتورة لهذا الصنف');
+        }
+
         final currentStock = (productSnapshot.data() as Map<String, dynamic>?)?['stock'] as num? ?? 0.0;
-
-        // 3. التحقق المزدوج (الشرط الجديد + الشرط القديم)
         
-        // أ) التحقق من أن الكمية المرتجعة لا تتجاوز الكمية المتاحة في الفاتورة الأصلية
-        final totalPurchasedAmount = purchase.quantity + purchase.freeQuantity;
-        final alreadyReturned = purchase.returnedQuantity;
-        if ((alreadyReturned + returnQuantity) > totalPurchasedAmount) {
-          throw Exception('الكمية المراد إرجاعها تتجاوز الكمية في الفاتورة');
-        }
-
-        // ب) التحقق من أن الكمية المرتجعة لا تتجاوز المخزون الحالي للمنتج
-        // (لا يمكن إرجاع بضاعة تم بيعها بالفعل)
         if (returnQuantity > currentStock) {
            throw Exception('لا يمكن إرجاع الكمية لأن المخزون الحالي أقل من المطلوب (تم بيع جزء من البضاعة)');
         }
-        
-        // 4. خصم الكمية المرتجعة من المخزون
-        final newStock = (currentStock).toDouble() - returnQuantity;
 
-        // 5. تنفيذ التحديثات
+        // --- 3. مرحلة الكتابة (Write) ---
+
+        // تحديث العنصر في الذاكرة
+        final updatedItem = PurchaseItemModel.fromEntity(targetItem).copyWith(
+          returnedQuantity: targetItem.returnedQuantity + returnQuantity,
+        );
+        
+        final List<PurchaseItemModel> updatedItems = List.from(purchase.items.map((e) => PurchaseItemModel.fromEntity(e)));
+        updatedItems[itemIndex] = PurchaseItemModel.fromEntity(updatedItem);
+
+        // تحديث الفاتورة في قاعدة البيانات
         transaction.update(purchaseRef, {
-          'returned_quantity': alreadyReturned + returnQuantity,
+          'items': updatedItems.map((e) => e.toJson()).toList(),
           'updated_at': DateTime.now().toIso8601String(),
         });
 
+        // تحديث مخزون المنتج
         transaction.update(productDocRef, {
-          'stock': newStock,
+          'stock': (currentStock).toDouble() - returnQuantity,
           'updated_at': DateTime.now().toIso8601String(),
         });
       });
     } catch (e) {
       developer.log('processReturn failed', name: 'PurchaseRemoteDataSource', error: e);
-      // إعادة رمي الخطأ ليتم عرضه للمستخدم في الواجهة
       rethrow;
     }
   }

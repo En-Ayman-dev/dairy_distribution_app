@@ -1,33 +1,30 @@
 import '../../domain/entities/purchase.dart';
+import 'purchase_item_model.dart';
 
 class PurchaseModel extends Purchase {
   const PurchaseModel({
     required super.id,
-    required super.productId,
     required super.supplierId,
-    required super.quantity,
-    super.freeQuantity, 
-    super.returnedQuantity,
-    required super.price,
+    required super.items,
+    super.discount,
     required super.createdAt,
     required super.updatedAt,
   });
 
   factory PurchaseModel.fromJson(Map<String, dynamic> json) {
     return PurchaseModel(
-      id: json['id'] as String? ?? '', // حماية ضد null في المعرف
-      productId: json['product_id'] as String? ?? '',
+      id: json['id'] as String? ?? '',
       supplierId: json['supplier_id'] as String? ?? '',
-      // استخدام التحويل الآمن (Safe Casting) للكمية والسعر
-      quantity: (json['quantity'] as num?)?.toDouble() ?? 0.0,
-      freeQuantity: (json['free_quantity'] as num?)?.toDouble() ?? 0.0,
-      returnedQuantity: (json['returned_quantity'] as num?)?.toDouble() ?? 0.0,
-      price: (json['price'] as num?)?.toDouble() ?? 0.0,
-      createdAt: json['created_at'] != null 
-          ? DateTime.parse(json['created_at'] as String) 
-          : DateTime.now(), // حماية التاريخ
-      updatedAt: json['updated_at'] != null 
-          ? DateTime.parse(json['updated_at'] as String) 
+      items: (json['items'] as List<dynamic>?)
+              ?.map((e) => PurchaseItemModel.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      discount: (json['discount'] as num?)?.toDouble() ?? 0.0,
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'] as String)
+          : DateTime.now(),
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'] as String)
           : DateTime.now(),
     );
   }
@@ -35,12 +32,14 @@ class PurchaseModel extends Purchase {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'product_id': productId,
       'supplier_id': supplierId,
-      'quantity': quantity,
-      'free_quantity': freeQuantity,
-      'returned_quantity': returnedQuantity,
-      'price': price,
+      // تحويل كل عنصر في القائمة إلى JSON باستخدام PurchaseItemModel
+      'items': items.map((e) => PurchaseItemModel.fromEntity(e).toJson()).toList(),
+      'discount': discount,
+      // تخزين القيم المحسوبة لتسهيل الاستعلامات والتقارير
+      'sub_total': subTotal,
+      'total_amount': totalAmount,
+      'total_quantity': totalQuantity,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -49,17 +48,17 @@ class PurchaseModel extends Purchase {
   factory PurchaseModel.fromMap(Map<String, dynamic> map) {
     return PurchaseModel(
       id: map['id'] as String? ?? '',
-      productId: map['product_id'] as String? ?? '',
       supplierId: map['supplier_id'] as String? ?? '',
-      quantity: (map['quantity'] as num?)?.toDouble() ?? 0.0,
-      freeQuantity: (map['free_quantity'] as num?)?.toDouble() ?? 0.0,
-      returnedQuantity: (map['returned_quantity'] as num?)?.toDouble() ?? 0.0,
-      price: (map['price'] as num?)?.toDouble() ?? 0.0,
-      createdAt: map['created_at'] != null 
-          ? DateTime.parse(map['created_at'] as String) 
+      items: (map['items'] as List<dynamic>?)
+              ?.map((e) => PurchaseItemModel.fromMap(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      discount: (map['discount'] as num?)?.toDouble() ?? 0.0,
+      createdAt: map['created_at'] != null
+          ? DateTime.parse(map['created_at'] as String)
           : DateTime.now(),
-      updatedAt: map['updated_at'] != null 
-          ? DateTime.parse(map['updated_at'] as String) 
+      updatedAt: map['updated_at'] != null
+          ? DateTime.parse(map['updated_at'] as String)
           : DateTime.now(),
     );
   }
@@ -67,12 +66,12 @@ class PurchaseModel extends Purchase {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'product_id': productId,
       'supplier_id': supplierId,
-      'quantity': quantity,
-      'free_quantity': freeQuantity,
-      'returned_quantity': returnedQuantity,
-      'price': price,
+      'items': items.map((e) => PurchaseItemModel.fromEntity(e).toMap()).toList(),
+      'discount': discount,
+      'sub_total': subTotal,
+      'total_amount': totalAmount,
+      'total_quantity': totalQuantity,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
       'sync_status': 0,
@@ -83,12 +82,9 @@ class PurchaseModel extends Purchase {
   factory PurchaseModel.fromEntity(Purchase purchase) {
     return PurchaseModel(
       id: purchase.id,
-      productId: purchase.productId,
       supplierId: purchase.supplierId,
-      quantity: purchase.quantity,
-      freeQuantity: purchase.freeQuantity,
-      returnedQuantity: purchase.returnedQuantity,
-      price: purchase.price,
+      items: purchase.items,
+      discount: purchase.discount,
       createdAt: purchase.createdAt,
       updatedAt: purchase.updatedAt,
     );

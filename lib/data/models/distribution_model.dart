@@ -103,6 +103,7 @@ class DistributionModel extends Distribution {
   }
 
   // --- الإضافة: دالة copyWith ---
+  @override
   DistributionModel copyWith({
     String? id,
     String? customerId,

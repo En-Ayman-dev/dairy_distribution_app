@@ -7,5 +7,6 @@ abstract class PurchaseRepository {
   Future<Either<Failure, String>> addPurchase(Purchase purchase);
   Stream<Either<Failure, List<Purchase>>> watchPurchases();
   
-  Future<Either<Failure, void>> processReturn(String purchaseId, double quantity);
+  // تم تحديث الدالة لتقبل productId
+  Future<Either<Failure, void>> processReturn(String purchaseId, String productId, double quantity);
 }

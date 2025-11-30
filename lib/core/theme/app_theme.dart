@@ -52,21 +52,21 @@ class AppTheme {
     final base = ThemeData.light().textTheme;
 
     final textTheme = _cairoTextTheme(base).copyWith(
-      displayLarge: GoogleFonts.cairo(fontSize: 96, fontWeight: FontWeight.bold, color: colorScheme.onBackground),
-      displayMedium: GoogleFonts.cairo(fontSize: 60, fontWeight: FontWeight.bold, color: colorScheme.onBackground),
-      displaySmall: GoogleFonts.cairo(fontSize: 48, fontWeight: FontWeight.bold, color: colorScheme.onBackground),
-      headlineLarge: GoogleFonts.cairo(fontSize: 34, fontWeight: FontWeight.bold, color: colorScheme.onBackground),
-      headlineMedium: GoogleFonts.cairo(fontSize: 24, fontWeight: FontWeight.bold, color: colorScheme.onBackground),
-      headlineSmall: GoogleFonts.cairo(fontSize: 20, fontWeight: FontWeight.bold, color: colorScheme.onBackground),
-      titleLarge: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.w700, color: colorScheme.onBackground),
-      titleMedium: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.w400, color: colorScheme.onBackground),
-      bodyLarge: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.w400, color: colorScheme.onBackground),
-      bodyMedium: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.w400, color: colorScheme.onBackground),
+      displayLarge: GoogleFonts.cairo(fontSize: 96, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+      displayMedium: GoogleFonts.cairo(fontSize: 60, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+      displaySmall: GoogleFonts.cairo(fontSize: 48, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+      headlineLarge: GoogleFonts.cairo(fontSize: 34, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+      headlineMedium: GoogleFonts.cairo(fontSize: 24, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+      headlineSmall: GoogleFonts.cairo(fontSize: 20, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+      titleLarge: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.w700, color: colorScheme.onSurface),
+      titleMedium: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.w400, color: colorScheme.onSurface),
+      bodyLarge: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.w400, color: colorScheme.onSurface),
+      bodyMedium: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.w400, color: colorScheme.onSurface),
       labelLarge: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.w700, color: colorScheme.onPrimary),
-      bodySmall: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.w400, color: colorScheme.onBackground),
-      labelMedium: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.w400, color: colorScheme.onBackground),
-      labelSmall: GoogleFonts.cairo(fontSize: 10, fontWeight: FontWeight.w400, color: colorScheme.onBackground),
-      titleSmall: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.w400, color: colorScheme.onBackground),
+      bodySmall: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.w400, color: colorScheme.onSurface),
+      labelMedium: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.w400, color: colorScheme.onSurface),
+      labelSmall: GoogleFonts.cairo(fontSize: 10, fontWeight: FontWeight.w400, color: colorScheme.onSurface),
+      titleSmall: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.w400, color: colorScheme.onSurface),
     );
 
     return textTheme;
@@ -107,16 +107,16 @@ class AppTheme {
   // ---------------------------
   static ElevatedButtonThemeData _elevatedButtonTheme(ColorScheme colorScheme) => ElevatedButtonThemeData(
         style: ButtonStyle(
-          backgroundColor: MaterialStateProperty.resolveWith((states) => _primary),
-          foregroundColor: MaterialStateProperty.all(_onPrimary),
-          elevation: MaterialStateProperty.resolveWith((states) => _buttonElevation),
-          fixedSize: MaterialStateProperty.resolveWith((states) => Size.fromHeight(_buttonHeight)),
-          padding: MaterialStateProperty.all(const EdgeInsets.symmetric(horizontal: 22)),
-          shape: MaterialStateProperty.all(
+          backgroundColor: WidgetStateProperty.resolveWith((states) => _primary),
+          foregroundColor: WidgetStateProperty.all(_onPrimary),
+          elevation: WidgetStateProperty.resolveWith((states) => _buttonElevation),
+          fixedSize: WidgetStateProperty.resolveWith((states) => Size.fromHeight(_buttonHeight)),
+          padding: WidgetStateProperty.all(const EdgeInsets.symmetric(horizontal: 22)),
+          shape: WidgetStateProperty.all(
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(_buttonRadius)),
           ),
-          shadowColor: MaterialStateProperty.all(Colors.black38),
-          textStyle: MaterialStateProperty.all(GoogleFonts.cairo(fontWeight: FontWeight.w700, fontSize: 16)),
+          shadowColor: WidgetStateProperty.all(Colors.black38),
+          textStyle: WidgetStateProperty.all(GoogleFonts.cairo(fontWeight: FontWeight.w700, fontSize: 16)),
         ),
       );
 
@@ -134,7 +134,7 @@ class AppTheme {
   // AppBar Theme
   // ---------------------------
   static AppBarTheme _appBarTheme(ColorScheme colorScheme) => AppBarTheme(
-        color: colorScheme.primary,
+        backgroundColor: colorScheme.primary,
         elevation: 0,
         centerTitle: true,
         titleTextStyle: GoogleFonts.cairo(fontSize: 18, fontWeight: FontWeight.w700, color: colorScheme.onPrimary),
@@ -150,8 +150,6 @@ class AppTheme {
       onPrimary: _onPrimary,
       secondary: _secondary,
       onSecondary: _onSecondary,
-      background: Colors.white,
-      onBackground: const Color(0xFF1B1B1B),
       surface: _cardLight,
       onSurface: const Color(0xFF1B1B1B),
     );
@@ -185,8 +183,6 @@ class AppTheme {
       onPrimary: _onPrimary,
       secondary: _secondary,
       onSecondary: _onSecondary,
-      background: _darkSurface,
-      onBackground: Colors.white70,
       surface: _cardDark,
       onSurface: Colors.white70,
     );

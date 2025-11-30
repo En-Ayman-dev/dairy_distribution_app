@@ -54,12 +54,13 @@ class PurchaseRepositoryImpl implements PurchaseRepository {
     }
   }
 
-  // --- تنفيذ الدالة الجديدة للمرتجعات ---
+  // --- تحديث دالة المرتجعات لتقبل productId ---
   @override
-  Future<Either<Failure, void>> processReturn(String purchaseId, double quantity) async {
+  Future<Either<Failure, void>> processReturn(String purchaseId, String productId, double quantity) async {
     if (!_isAuthenticated) return Left(AuthenticationFailure('User not authenticated'));
     try {
-      await remoteDataSource.processReturn(_userId, purchaseId, quantity);
+      // تمرير productId إلى مصدر البيانات
+      await remoteDataSource.processReturn(_userId, purchaseId, productId, quantity);
       return const Right(null);
     } catch (e) {
       developer.log('Failed to process return', error: e, name: 'PurchaseRepository');

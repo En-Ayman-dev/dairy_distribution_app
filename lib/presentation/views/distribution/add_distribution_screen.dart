@@ -118,10 +118,11 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
   Future<void> _selectPrinter() async {
     final devices = await _printerService.getBondedDevices();
     if (devices.isEmpty) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('لا توجد طابعات مقترنة.')));
+      }
       return;
     }
 
@@ -150,15 +151,17 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
     final ok = await _printerService.connect(selected);
     if (ok) {
       setState(() => _selectedPrinterDevice = selected);
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('تم الاتصال بالطابعة')));
+      }
     } else {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('فشل الاتصال بالطابعة')));
+      }
     }
   }
 
@@ -435,8 +438,9 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                       child: Consumer<DistributionViewModel>(
                         builder: (context, vm, child) {
                           final items = vm.currentItems;
-                          if (items.isEmpty)
+                          if (items.isEmpty) {
                             return Center(child: Text(t.noProductsFound));
+                          }
                           return ListView.separated(
                             itemCount: items.length,
                             separatorBuilder: (_, __) =>
@@ -612,20 +616,22 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
         );
         if (preview) OpenFile.open(path);
       } catch (e) {
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text('خطأ: $e')));
+        }
       }
     } else {
       // --- الطباعة الحرارية (الحل النهائي للورقة البيضاء) ---
 
       // تحقق من توفر البلوتوث أولاً
       if (!(await _printerService.isAvailable)) {
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('الرجاء تفعيل البلوتوث')),
           );
+        }
         return;
       }
 
@@ -635,10 +641,11 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
           !(await _printerService.isConnected)) {
         final ok = await _printerService.connect(_selectedPrinterDevice!);
         if (!ok) {
-          if (mounted)
+          if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('فشل الاتصال بالطابعة المحددة')),
             );
+          }
           // تعيد تعيين الطابعة ليرجع المستخدم لاختيار طابعة أخرى
           setState(() => _selectedPrinterDevice = null);
           return;
@@ -647,20 +654,22 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
         // لا توجد طابعة محددة؛ اعمل الاختيار التلقائي السابق
         final devices = await _printerService.getBondedDevices();
         if (devices.isEmpty) {
-          if (mounted)
+          if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('لا توجد طابعات مقترنة.')),
             );
+          }
           return;
         }
 
         // إذا كان هناك جهاز واحد فقط، حاول الاتصال به تلقائياً
         if (devices.length == 1) {
           final ok = await _printerService.connect(devices.first);
-          if (!ok && mounted)
+          if (!ok && mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('فشل الاتصال بالطابعة')),
             );
+          }
           if (!ok) return;
         } else {
           // إذا كان هناك أكثر من جهاز، اطلب من المستخدم الاختيار
@@ -686,10 +695,11 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
 
           if (selectedDevice == null) return;
           final ok = await _printerService.connect(selectedDevice);
-          if (!ok && mounted)
+          if (!ok && mounted) {
             ScaffoldMessenger.of(
               context,
             ).showSnackBar(const SnackBar(content: Text('فشل الاتصال')));
+          }
           if (!ok) return;
         }
       }
@@ -716,7 +726,7 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
         ).showSnackBar(const SnackBar(content: Text('جاري معالجة الصورة...')));
 
         // Capture with verification: try multiple attempts with increasing delay
-        Future<Uint8List?> _captureVerifiedImage() async {
+        Future<Uint8List?> captureVerifiedImage() async {
           final attempts = [300, 600, 1000]; // milliseconds
           for (int i = 0; i < attempts.length; i++) {
             final delayMs = attempts[i];
@@ -812,9 +822,9 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
           return null;
         }
 
-        final Uint8List? imageBytes = await _captureVerifiedImage();
+        final Uint8List? imageBytes = await captureVerifiedImage();
         if (imageBytes == null) {
-          if (mounted)
+          if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text(
@@ -822,16 +832,18 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                 ),
               ),
             );
+          }
           return;
         }
 
         // عرض معاينة للمستخدم قبل الإرسال للطابعة
         final confirmed = await _showImagePreview(imageBytes);
         if (!confirmed) {
-          if (mounted)
+          if (mounted) {
             ScaffoldMessenger.of(
               context,
             ).showSnackBar(const SnackBar(content: Text('تم إلغاء الطباعة')));
+          }
           return;
         }
 
@@ -852,7 +864,7 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
               '${dir.path}/escpos_debug_${DateTime.now().millisecondsSinceEpoch}.bin',
             );
             await file.writeAsBytes(bytes);
-            if (mounted)
+            if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
@@ -860,13 +872,15 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                   ),
                 ),
               );
+            }
           } catch (e) {
             developer.log('Failed saving ESC/POS debug file', error: e);
           }
-          if (mounted)
+          if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('خطأ: لم يتم إنشاء أوامر الطباعة')),
             );
+          }
           return;
         }
 
@@ -904,10 +918,11 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
         }
       } catch (e) {
         developer.log('Print error', error: e);
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text('خطأ: $e')));
+        }
       }
     }
   }

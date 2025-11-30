@@ -11,7 +11,6 @@ import '../datasources/remote/customer_remote_datasource.dart';
 import '../datasources/remote/product_remote_datasource.dart';
 import '../models/distribution_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:developer' as developer;
 
 class DistributionRepositoryImpl implements DistributionRepository {

@@ -295,9 +295,7 @@ class ReportViewModel extends ChangeNotifier {
         case ReportType.outstanding:
           filePath = await pdfGenerator.generateOutstandingReport(_reportData);
           break;
-        default:
-          break;
-      }
+        }
 
       _setState(ReportViewState.loaded);
       return filePath;
@@ -327,9 +325,7 @@ class ReportViewModel extends ChangeNotifier {
         case ReportType.outstanding:
           filePath = await excelGenerator.generateOutstandingReport(_reportData);
           break;
-        default:
-          break;
-      }
+        }
 
       _setState(ReportViewState.loaded);
       return filePath;
