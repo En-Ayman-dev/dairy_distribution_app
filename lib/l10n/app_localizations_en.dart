@@ -615,4 +615,157 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get purchaseListTitle => 'Purchase History';
+
+  @override
+  String get purchasesAndPaymentsTitle => 'Purchases & Payments';
+
+  @override
+  String get invoicesTabTitle => 'Invoices Log';
+
+  @override
+  String get paymentsAndDebtTabTitle => 'Payments & Debt';
+
+  @override
+  String get filterBySupplierHint => 'Filter by Supplier (View All)';
+
+  @override
+  String get viewAllSuppliers => 'View All';
+
+  @override
+  String get selectSupplierPrompt => 'Please select a supplier from the filter above\nto view debt and payments';
+
+  @override
+  String get paymentHistoryTitle => 'Payment History';
+
+  @override
+  String get noPaymentsFound => 'No payments recorded';
+
+  @override
+  String get addPaymentLabel => 'Add Payment';
+
+  @override
+  String get currentDebtLabel => 'Current Debt';
+
+  @override
+  String get debtStatusPaid => 'Paid Off';
+
+  @override
+  String get debtStatusCredit => 'Credit Balance';
+
+  @override
+  String get debtStatusDue => 'Payment Due';
+
+  @override
+  String get addPaymentTitle => 'Add Supplier Payment';
+
+  @override
+  String get paymentAmountLabel => 'Payment Amount';
+
+  @override
+  String get amountRequiredError => 'Please enter amount';
+
+  @override
+  String get invalidAmountError => 'Please enter a valid amount greater than zero';
+
+  @override
+  String get paymentNotesLabel => 'Notes (Payment Details)';
+
+  @override
+  String get paymentNotesHint => 'e.g., Cash / Bank Transfer';
+
+  @override
+  String get savePaymentButton => 'Save Payment';
+
+  @override
+  String get paymentAddedSuccess => 'Payment added successfully';
+
+  @override
+  String get paymentAddedError => 'Failed to add payment';
+
+  @override
+  String get noInvoicesForSupplier => 'No invoices for this supplier';
+
+  @override
+  String get newInvoiceButton => 'New Invoice';
+
+  @override
+  String get returnItemTitle => 'Return Item';
+
+  @override
+  String get productPrefix => 'Product: ';
+
+  @override
+  String get returnableQuantityPrefix => 'Returnable: ';
+
+  @override
+  String get returnQuantityLabel => 'Return Quantity';
+
+  @override
+  String get invalidReturnAmountError => 'Please enter a valid quantity';
+
+  @override
+  String get returnAmountExceedsError => 'Quantity exceeds available amount';
+
+  @override
+  String get returnRecordedSuccess => 'Return recorded successfully';
+
+  @override
+  String get unknownSupplier => 'Unknown Supplier';
+
+  @override
+  String get unknownProduct => 'Unknown Product';
+
+  @override
+  String get invoiceItemsLabel => 'Items:';
+
+  @override
+  String get subTotalLabel => 'Subtotal:';
+
+  @override
+  String get discountLabel => 'Discount:';
+
+  @override
+  String get netTotalLabel => 'Net Total:';
+
+  @override
+  String get returnedPrefix => 'Returned: ';
+
+  @override
+  String get totalDiscountLabel => 'Total Discount';
+
+  @override
+  String get addProductsToInvoiceTitle => 'Add Products to Invoice';
+
+  @override
+  String get addToCartButton => 'Add to Cart';
+
+  @override
+  String get invoiceContentsTitle => 'Invoice Contents';
+
+  @override
+  String get noProductsAdded => 'No products added';
+
+  @override
+  String get saveFinalInvoiceButton => 'Save Final Invoice';
+
+  @override
+  String get selectSupplierError => 'Please select a supplier';
+
+  @override
+  String get addProductsError => 'Please add products to the invoice';
+
+  @override
+  String get invoiceSavedSuccess => 'Invoice saved successfully';
+
+  @override
+  String get subTotalSummaryLabel => 'Subtotal:';
+
+  @override
+  String get netTotalSummaryLabel => 'Net Total:';
+
+  @override
+  String get quantityMustBePositiveError => 'Quantity must be greater than zero';
+
+  @override
+  String get freeLabel => 'Free';
 }

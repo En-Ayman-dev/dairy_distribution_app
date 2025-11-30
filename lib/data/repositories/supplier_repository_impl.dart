@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'package:dartz/dartz.dart';
 import '../../domain/entities/supplier.dart';
+import '../../domain/entities/supplier_payment.dart'; // استيراد كيان الدفعات
 import '../../domain/repositories/supplier_repository.dart';
 import '../../core/errors/failures.dart';
 import '../datasources/remote/supplier_remote_datasource.dart';
 import '../models/supplier_model.dart';
+import '../models/supplier_payment_model.dart'; // استيراد موديل الدفعات
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:developer' as developer;
 
@@ -85,6 +87,48 @@ class SupplierRepositoryImpl implements SupplierRepository {
       });
     } catch (e) {
       return Stream.value(Left(ServerFailure('Failed to watch suppliers')));
+    }
+  }
+
+  // --- تنفيذ دوال الدفعات ---
+
+  @override
+  Future<Either<Failure, String>> addPayment(SupplierPayment payment) async {
+    if (!_isAuthenticated) return Left(AuthenticationFailure('User not authenticated'));
+    try {
+      final model = SupplierPaymentModel.fromEntity(payment);
+      final id = await remoteDataSource.addPayment(_userId, model);
+      return Right(id);
+    } catch (e) {
+      developer.log('Failed to add payment', error: e, name: 'SupplierRepository');
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<SupplierPayment>>> getSupplierPayments(String supplierId) async {
+    if (!_isAuthenticated) return Left(AuthenticationFailure('User not authenticated'));
+    try {
+      final remotePayments = await remoteDataSource.getSupplierPayments(_userId, supplierId);
+      return Right(remotePayments);
+    } catch (e) {
+      developer.log('Failed to fetch payments', error: e, name: 'SupplierRepository');
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Stream<Either<Failure, List<SupplierPayment>>> watchSupplierPayments(String supplierId) {
+    if (!_isAuthenticated) return Stream.value(Left(AuthenticationFailure('User not authenticated')));
+    try {
+      return remoteDataSource.watchSupplierPayments(_userId, supplierId)
+          .map((payments) => Right<Failure, List<SupplierPayment>>(payments))
+          .handleError((e) {
+        developer.log('watchSupplierPayments stream error', name: 'SupplierRepository', error: e);
+        throw e;
+      });
+    } catch (e) {
+      return Stream.value(Left(ServerFailure('Failed to watch supplier payments')));
     }
   }
 }

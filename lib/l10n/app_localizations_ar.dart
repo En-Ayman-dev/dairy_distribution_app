@@ -615,4 +615,157 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get purchaseListTitle => 'سجل المشتريات';
+
+  @override
+  String get purchasesAndPaymentsTitle => 'المشتريات والمدفوعات';
+
+  @override
+  String get invoicesTabTitle => 'سجل الفواتير';
+
+  @override
+  String get paymentsAndDebtTabTitle => 'المدفوعات والمديونية';
+
+  @override
+  String get filterBySupplierHint => 'تصفية حسب المورد (عرض الكل)';
+
+  @override
+  String get viewAllSuppliers => 'عرض الكل';
+
+  @override
+  String get selectSupplierPrompt => 'الرجاء اختيار مورد من الفلتر في الأعلى\nلعرض المديونية والمدفوعات';
+
+  @override
+  String get paymentHistoryTitle => 'سجل المدفوعات';
+
+  @override
+  String get noPaymentsFound => 'لا توجد مدفوعات مسجلة';
+
+  @override
+  String get addPaymentLabel => 'إضافة دفع';
+
+  @override
+  String get currentDebtLabel => 'المديونية الحالية';
+
+  @override
+  String get debtStatusPaid => 'خالص';
+
+  @override
+  String get debtStatusCredit => 'له رصيد فائض';
+
+  @override
+  String get debtStatusDue => 'مستحق الدفع';
+
+  @override
+  String get addPaymentTitle => 'إضافة دفعة للمورد';
+
+  @override
+  String get paymentAmountLabel => 'المبلغ المدفوع';
+
+  @override
+  String get amountRequiredError => 'الرجاء إدخال المبلغ';
+
+  @override
+  String get invalidAmountError => 'الرجاء إدخال قيمة صحيحة أكبر من صفر';
+
+  @override
+  String get paymentNotesLabel => 'ملاحظات (بيان الدفع)';
+
+  @override
+  String get paymentNotesHint => 'مثلاً: دفعة نقدية / تحويل بنكي';
+
+  @override
+  String get savePaymentButton => 'حفظ الدفعة';
+
+  @override
+  String get paymentAddedSuccess => 'تم إضافة الدفعة بنجاح';
+
+  @override
+  String get paymentAddedError => 'فشل إضافة الدفعة';
+
+  @override
+  String get noInvoicesForSupplier => 'لا توجد فواتير لهذا المورد';
+
+  @override
+  String get newInvoiceButton => 'فاتورة جديدة';
+
+  @override
+  String get returnItemTitle => 'مرتجع صنف';
+
+  @override
+  String get productPrefix => 'المنتج: ';
+
+  @override
+  String get returnableQuantityPrefix => 'المتاح للإرجاع: ';
+
+  @override
+  String get returnQuantityLabel => 'الكمية المراد إرجاعها';
+
+  @override
+  String get invalidReturnAmountError => 'الرجاء إدخال كمية صحيحة';
+
+  @override
+  String get returnAmountExceedsError => 'الكمية تتجاوز المتاح';
+
+  @override
+  String get returnRecordedSuccess => 'تم تسجيل المرتجع بنجاح';
+
+  @override
+  String get unknownSupplier => 'مورد غير معروف';
+
+  @override
+  String get unknownProduct => 'منتج غير معروف';
+
+  @override
+  String get invoiceItemsLabel => 'الأصناف:';
+
+  @override
+  String get subTotalLabel => 'المجموع:';
+
+  @override
+  String get discountLabel => 'الخصم:';
+
+  @override
+  String get netTotalLabel => 'الصافي:';
+
+  @override
+  String get returnedPrefix => 'مسترجع: ';
+
+  @override
+  String get totalDiscountLabel => 'الخصم الكلي';
+
+  @override
+  String get addProductsToInvoiceTitle => 'إضافة منتجات للفاتورة';
+
+  @override
+  String get addToCartButton => 'إضافة للسلة';
+
+  @override
+  String get invoiceContentsTitle => 'محتويات الفاتورة';
+
+  @override
+  String get noProductsAdded => 'لا توجد منتجات مضافة';
+
+  @override
+  String get saveFinalInvoiceButton => 'حفظ الفاتورة النهائية';
+
+  @override
+  String get selectSupplierError => 'الرجاء اختيار المورد';
+
+  @override
+  String get addProductsError => 'الرجاء إضافة منتجات للفاتورة';
+
+  @override
+  String get invoiceSavedSuccess => 'تم حفظ الفاتورة بنجاح';
+
+  @override
+  String get subTotalSummaryLabel => 'المجموع الفرعي:';
+
+  @override
+  String get netTotalSummaryLabel => 'الإجمالي الصافي:';
+
+  @override
+  String get quantityMustBePositiveError => 'الكمية يجب أن تكون أكبر من صفر';
+
+  @override
+  String get freeLabel => 'مجاني';
 }

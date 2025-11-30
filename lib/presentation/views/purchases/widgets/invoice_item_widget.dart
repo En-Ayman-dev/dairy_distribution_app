@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../domain/entities/purchase_item.dart';
 import '../../../viewmodels/product_viewmodel.dart';
+import '../../../../l10n/app_localizations.dart';
 
 class InvoiceItemWidget extends StatelessWidget {
   final PurchaseItem item;
@@ -15,13 +16,14 @@ class InvoiceItemWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
     // البحث عن اسم المنتج باستخدام الـ ID
     final productVm = context.watch<ProductViewModel>();
     final product = productVm.products
         .where((p) => p.id == item.productId)
         .firstOrNull;
     
-    final productName = product?.name ?? 'منتج غير معروف';
+    final productName = product?.name ?? localizations.unknownProduct;
 
     return Card(
       elevation: 3,
@@ -75,7 +77,7 @@ class InvoiceItemWidget extends StatelessWidget {
                         // كبسولة الكمية
                         _buildInfoChip(
                           context,
-                          label: 'العدد: ${item.quantity.toStringAsFixed(0)}',
+                          label: '${localizations.quantityLabel}: ${item.quantity.toStringAsFixed(0)}',
                           icon: Icons.inventory_2_outlined,
                           bgColor: Colors.grey[100],
                           textColor: Colors.grey[800],
@@ -85,7 +87,7 @@ class InvoiceItemWidget extends StatelessWidget {
                         if (item.freeQuantity > 0)
                           _buildInfoChip(
                             context,
-                            label: '+${item.freeQuantity.toStringAsFixed(0)} مجاني',
+                            label: '+${item.freeQuantity.toStringAsFixed(0)} ${localizations.freeLabel}',
                             icon: Icons.card_giftcard,
                             bgColor: Colors.green[50],
                             textColor: Colors.green[800],

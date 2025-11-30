@@ -5,7 +5,7 @@ import '../../viewmodels/product_viewmodel.dart';
 import '../../viewmodels/purchase_viewmodel.dart';
 import '../../viewmodels/supplier_viewmodel.dart';
 import '../../../l10n/app_localizations.dart';
-import 'widgets/invoice_item_widget.dart'; // الودجت الذي أنشأناه للتو
+import 'widgets/invoice_item_widget.dart';
 
 class AddPurchaseScreen extends StatefulWidget {
   final String? productId; // اختياري: إذا جئنا من تفاصيل المنتج
@@ -55,8 +55,11 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
 
   // دالة لإضافة العنصر إلى السلة (في الذاكرة)
   void _addItemToCart() {
+    final localizations = AppLocalizations.of(context)!;
+
     if (_selectedProductId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('الرجاء اختيار المنتج')));
+      // استخدام رسالة عامة أو يمكن إضافة مفتاح خاص لاحقاً
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${localizations.productLabel} ${localizations.supplierNameRequired.split(' ').last}'))); // "المنتج مطلوب" تقريباً
       return;
     }
     
@@ -65,7 +68,7 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
     final price = double.tryParse(_priceController.text) ?? 0.0;
 
     if (qty <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('الكمية يجب أن تكون أكبر من صفر')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(localizations.quantityMustBePositiveError)));
       return;
     }
 
@@ -109,7 +112,7 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
                 child: Column(
                   children: [
                     DropdownButtonFormField<String>(
-                      initialValue: _selectedSupplierId,
+                      value: _selectedSupplierId,
                       items: supplierVm.suppliers.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))).toList(),
                       onChanged: (v) => setState(() => _selectedSupplierId = v),
                       decoration: InputDecoration(
@@ -122,11 +125,11 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
                     TextField(
                       controller: _discountController,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(
-                        labelText: 'الخصم الكلي (Discount)',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.discount),
-                        suffixText: 'ريال',
+                      decoration: InputDecoration(
+                        labelText: localizations.totalDiscountLabel,
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.discount),
+                        // تم إزالة suffixText الثابت لضمان الحيادية، يمكن إضافته كمتغير عملة لاحقاً
                       ),
                       onChanged: (_) => setState(() {}), // لتحديث الملخص عند الكتابة
                     ),
@@ -148,10 +151,10 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('إضافة منتجات للفاتورة', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    Text(localizations.addProductsToInvoiceTitle, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      initialValue: _selectedProductId,
+                      value: _selectedProductId,
                       items: productVm.products.map((p) => DropdownMenuItem(value: p.id, child: Text(p.name))).toList(),
                       onChanged: (v) {
                          setState(() {
@@ -186,9 +189,9 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
                           child: TextField(
                             controller: _freeQtyController,
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            decoration: const InputDecoration(
-                              labelText: 'مجاني',
-                              border: OutlineInputBorder(),
+                            decoration: InputDecoration(
+                              labelText: localizations.freeLabel,
+                              border: const OutlineInputBorder(),
                             ),
                           ),
                         ),
@@ -211,7 +214,7 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
                       child: ElevatedButton.icon(
                         onPressed: _addItemToCart,
                         icon: const Icon(Icons.add_shopping_cart),
-                        label: const Text('إضافة للسلة'),
+                        label: Text(localizations.addToCartButton),
                       ),
                     ),
                   ],
@@ -221,10 +224,10 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
             const SizedBox(height: 24),
 
             // --- 3. قائمة السلة (Cart List) ---
-            Text('محتويات الفاتورة (${purchaseVm.cartItems.length})', style: Theme.of(context).textTheme.titleMedium),
+            Text('${localizations.invoiceContentsTitle} (${purchaseVm.cartItems.length})', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             if (purchaseVm.cartItems.isEmpty)
-              const Center(child: Padding(padding: EdgeInsets.all(24.0), child: Text('لا توجد منتجات مضافة')))
+              Center(child: Padding(padding: const EdgeInsets.all(24.0), child: Text(localizations.noProductsAdded)))
             else
               ListView.builder(
                 shrinkWrap: true,
@@ -241,7 +244,7 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
             const SizedBox(height: 24),
 
             // --- 4. الملخص وزر الحفظ النهائي ---
-            _buildSummarySection(purchaseVm),
+            _buildSummarySection(purchaseVm, localizations),
             const SizedBox(height: 16),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -251,11 +254,11 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
               ),
               onPressed: () async {
                 if (_selectedSupplierId == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('الرجاء اختيار المورد')));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(localizations.selectSupplierError)));
                   return;
                 }
                 if (purchaseVm.cartItems.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('الرجاء إضافة منتجات للفاتورة')));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(localizations.addProductsError)));
                   return;
                 }
 
@@ -268,11 +271,11 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
                 );
 
                 if (success && mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حفظ الفاتورة بنجاح')));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(localizations.invoiceSavedSuccess)));
                   Navigator.pop(context);
                 }
               },
-              child: const Text('حفظ الفاتورة النهائية', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              child: Text(localizations.saveFinalInvoiceButton, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -281,7 +284,7 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
   }
 
   // ويدجت لعرض الملخص المالي
-  Widget _buildSummarySection(PurchaseViewModel vm) {
+  Widget _buildSummarySection(PurchaseViewModel vm, AppLocalizations localizations) {
     final subTotal = vm.cartSubTotal;
     final discount = double.tryParse(_discountController.text) ?? 0.0;
     final total = subTotal - discount;
@@ -292,11 +295,11 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            _summaryRow('المجموع الفرعي:', subTotal),
+            _summaryRow(localizations.subTotalSummaryLabel, subTotal),
             const Divider(),
-            _summaryRow('الخصم:', discount, isNegative: true),
+            _summaryRow(localizations.discountLabel, discount, isNegative: true),
             const Divider(),
-            _summaryRow('الإجمالي الصافي:', total, isBold: true, color: Colors.green[800]),
+            _summaryRow(localizations.netTotalSummaryLabel, total, isBold: true, color: Colors.green[800]),
           ],
         ),
       ),

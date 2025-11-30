@@ -1306,6 +1306,312 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Purchase History'**
   String get purchaseListTitle;
+
+  /// No description provided for @purchasesAndPaymentsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchases & Payments'**
+  String get purchasesAndPaymentsTitle;
+
+  /// No description provided for @invoicesTabTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoices Log'**
+  String get invoicesTabTitle;
+
+  /// No description provided for @paymentsAndDebtTabTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Payments & Debt'**
+  String get paymentsAndDebtTabTitle;
+
+  /// No description provided for @filterBySupplierHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter by Supplier (View All)'**
+  String get filterBySupplierHint;
+
+  /// No description provided for @viewAllSuppliers.
+  ///
+  /// In en, this message translates to:
+  /// **'View All'**
+  String get viewAllSuppliers;
+
+  /// No description provided for @selectSupplierPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select a supplier from the filter above\nto view debt and payments'**
+  String get selectSupplierPrompt;
+
+  /// No description provided for @paymentHistoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment History'**
+  String get paymentHistoryTitle;
+
+  /// No description provided for @noPaymentsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No payments recorded'**
+  String get noPaymentsFound;
+
+  /// No description provided for @addPaymentLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Payment'**
+  String get addPaymentLabel;
+
+  /// No description provided for @currentDebtLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Current Debt'**
+  String get currentDebtLabel;
+
+  /// No description provided for @debtStatusPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid Off'**
+  String get debtStatusPaid;
+
+  /// No description provided for @debtStatusCredit.
+  ///
+  /// In en, this message translates to:
+  /// **'Credit Balance'**
+  String get debtStatusCredit;
+
+  /// No description provided for @debtStatusDue.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment Due'**
+  String get debtStatusDue;
+
+  /// No description provided for @addPaymentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Supplier Payment'**
+  String get addPaymentTitle;
+
+  /// No description provided for @paymentAmountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment Amount'**
+  String get paymentAmountLabel;
+
+  /// No description provided for @amountRequiredError.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter amount'**
+  String get amountRequiredError;
+
+  /// No description provided for @invalidAmountError.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a valid amount greater than zero'**
+  String get invalidAmountError;
+
+  /// No description provided for @paymentNotesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes (Payment Details)'**
+  String get paymentNotesLabel;
+
+  /// No description provided for @paymentNotesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g., Cash / Bank Transfer'**
+  String get paymentNotesHint;
+
+  /// No description provided for @savePaymentButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Payment'**
+  String get savePaymentButton;
+
+  /// No description provided for @paymentAddedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment added successfully'**
+  String get paymentAddedSuccess;
+
+  /// No description provided for @paymentAddedError.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to add payment'**
+  String get paymentAddedError;
+
+  /// No description provided for @noInvoicesForSupplier.
+  ///
+  /// In en, this message translates to:
+  /// **'No invoices for this supplier'**
+  String get noInvoicesForSupplier;
+
+  /// No description provided for @newInvoiceButton.
+  ///
+  /// In en, this message translates to:
+  /// **'New Invoice'**
+  String get newInvoiceButton;
+
+  /// No description provided for @returnItemTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Return Item'**
+  String get returnItemTitle;
+
+  /// No description provided for @productPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'Product: '**
+  String get productPrefix;
+
+  /// No description provided for @returnableQuantityPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'Returnable: '**
+  String get returnableQuantityPrefix;
+
+  /// No description provided for @returnQuantityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Return Quantity'**
+  String get returnQuantityLabel;
+
+  /// No description provided for @invalidReturnAmountError.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a valid quantity'**
+  String get invalidReturnAmountError;
+
+  /// No description provided for @returnAmountExceedsError.
+  ///
+  /// In en, this message translates to:
+  /// **'Quantity exceeds available amount'**
+  String get returnAmountExceedsError;
+
+  /// No description provided for @returnRecordedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Return recorded successfully'**
+  String get returnRecordedSuccess;
+
+  /// No description provided for @unknownSupplier.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown Supplier'**
+  String get unknownSupplier;
+
+  /// No description provided for @unknownProduct.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown Product'**
+  String get unknownProduct;
+
+  /// No description provided for @invoiceItemsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Items:'**
+  String get invoiceItemsLabel;
+
+  /// No description provided for @subTotalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtotal:'**
+  String get subTotalLabel;
+
+  /// No description provided for @discountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Discount:'**
+  String get discountLabel;
+
+  /// No description provided for @netTotalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Net Total:'**
+  String get netTotalLabel;
+
+  /// No description provided for @returnedPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'Returned: '**
+  String get returnedPrefix;
+
+  /// No description provided for @totalDiscountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Discount'**
+  String get totalDiscountLabel;
+
+  /// No description provided for @addProductsToInvoiceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Products to Invoice'**
+  String get addProductsToInvoiceTitle;
+
+  /// No description provided for @addToCartButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to Cart'**
+  String get addToCartButton;
+
+  /// No description provided for @invoiceContentsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice Contents'**
+  String get invoiceContentsTitle;
+
+  /// No description provided for @noProductsAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'No products added'**
+  String get noProductsAdded;
+
+  /// No description provided for @saveFinalInvoiceButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Final Invoice'**
+  String get saveFinalInvoiceButton;
+
+  /// No description provided for @selectSupplierError.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select a supplier'**
+  String get selectSupplierError;
+
+  /// No description provided for @addProductsError.
+  ///
+  /// In en, this message translates to:
+  /// **'Please add products to the invoice'**
+  String get addProductsError;
+
+  /// No description provided for @invoiceSavedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice saved successfully'**
+  String get invoiceSavedSuccess;
+
+  /// No description provided for @subTotalSummaryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtotal:'**
+  String get subTotalSummaryLabel;
+
+  /// No description provided for @netTotalSummaryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Net Total:'**
+  String get netTotalSummaryLabel;
+
+  /// No description provided for @quantityMustBePositiveError.
+  ///
+  /// In en, this message translates to:
+  /// **'Quantity must be greater than zero'**
+  String get quantityMustBePositiveError;
+
+  /// No description provided for @freeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Free'**
+  String get freeLabel;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

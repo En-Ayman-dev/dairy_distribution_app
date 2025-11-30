@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:developer' as developer;
 import '../../models/supplier_model.dart';
+import '../../models/supplier_payment_model.dart'; // استيراد موديل الدفعات
 import '../../../core/constants/firebase_constants.dart';
 
 abstract class SupplierRemoteDataSource {
@@ -10,6 +11,11 @@ abstract class SupplierRemoteDataSource {
   Future<void> updateSupplier(String userId, SupplierModel supplier);
   Future<void> deleteSupplier(String userId, String supplierId);
   Stream<List<SupplierModel>> watchSuppliers(String userId);
+
+  // --- دوال الدفعات الجديدة ---
+  Future<String> addPayment(String userId, SupplierPaymentModel payment);
+  Future<List<SupplierPaymentModel>> getSupplierPayments(String userId, String supplierId);
+  Stream<List<SupplierPaymentModel>> watchSupplierPayments(String userId, String supplierId);
 }
 
 class SupplierRemoteDataSourceImpl implements SupplierRemoteDataSource {
@@ -22,6 +28,13 @@ class SupplierRemoteDataSourceImpl implements SupplierRemoteDataSource {
         .collection(FirebaseConstants.usersCollection)
         .doc(userId)
         .collection(FirebaseConstants.suppliersCollection);
+  }
+
+  // دالة مساعدة للوصول لمجموعة المدفوعات الفرعية
+  CollectionReference _paymentsCollection(String userId, String supplierId) {
+    return _suppliersCollection(userId)
+        .doc(supplierId)
+        .collection('payments');
   }
 
   @override
@@ -86,6 +99,51 @@ class SupplierRemoteDataSourceImpl implements SupplierRemoteDataSource {
     return _suppliersCollection(userId).snapshots().map((snapshot) => snapshot.docs
         .map((doc) => SupplierModel.fromJson(doc.data() as Map<String, dynamic>)).toList()).handleError((e) {
       developer.log('watchSuppliers stream error', name: 'SupplierRemoteDataSource', error: e);
+      throw e;
+    });
+  }
+
+  // --- تنفيذ دوال الدفعات ---
+
+  @override
+  Future<String> addPayment(String userId, SupplierPaymentModel payment) async {
+    try {
+      // نستخدم supplierId الموجود داخل كائن الدفعة لتحديد المسار الصحيح
+      final docRef = _paymentsCollection(userId, payment.supplierId).doc(payment.id);
+      await docRef.set(payment.toJson());
+      return payment.id;
+    } catch (e) {
+      developer.log('addPayment failed', name: 'SupplierRemoteDataSource', error: e);
+      rethrow;
+    }
+  }
+
+  @override
+  Future<List<SupplierPaymentModel>> getSupplierPayments(String userId, String supplierId) async {
+    try {
+      final snapshot = await _paymentsCollection(userId, supplierId)
+          .orderBy('payment_date', descending: true) // الأحدث أولاً
+          .get();
+          
+      return snapshot.docs
+          .map((doc) => SupplierPaymentModel.fromJson(doc.data() as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      developer.log('getSupplierPayments failed', name: 'SupplierRemoteDataSource', error: e);
+      rethrow;
+    }
+  }
+
+  @override
+  Stream<List<SupplierPaymentModel>> watchSupplierPayments(String userId, String supplierId) {
+    return _paymentsCollection(userId, supplierId)
+        .orderBy('payment_date', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => SupplierPaymentModel.fromJson(doc.data() as Map<String, dynamic>))
+            .toList())
+        .handleError((e) {
+      developer.log('watchSupplierPayments stream error', name: 'SupplierRemoteDataSource', error: e);
       throw e;
     });
   }
