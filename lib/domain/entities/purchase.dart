@@ -5,6 +5,7 @@ class Purchase extends Equatable {
   final String productId;
   final String supplierId;
   final double quantity;
+  final double freeQuantity; // الكمية المجانية (الإضافية)
   final double price; // purchase price
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -14,6 +15,7 @@ class Purchase extends Equatable {
     required this.productId,
     required this.supplierId,
     required this.quantity,
+    this.freeQuantity = 0.0, // القيمة الافتراضية 0
     required this.price,
     required this.createdAt,
     required this.updatedAt,
@@ -24,6 +26,7 @@ class Purchase extends Equatable {
     String? productId,
     String? supplierId,
     double? quantity,
+    double? freeQuantity,
     double? price,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -33,6 +36,7 @@ class Purchase extends Equatable {
       productId: productId ?? this.productId,
       supplierId: supplierId ?? this.supplierId,
       quantity: quantity ?? this.quantity,
+      freeQuantity: freeQuantity ?? this.freeQuantity,
       price: price ?? this.price,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -40,5 +44,14 @@ class Purchase extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, productId, supplierId, quantity, price, createdAt, updatedAt];
+  List<Object?> get props => [
+        id,
+        productId,
+        supplierId,
+        quantity,
+        freeQuantity,
+        price,
+        createdAt,
+        updatedAt,
+      ];
 }

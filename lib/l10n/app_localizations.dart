@@ -1,241 +1,1335 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/intl.dart' as intl;
 
-/// Minimal localizations shim used during development.
-/// When you run Flutter gen-l10n this will be replaced by the generated
-/// `AppLocalizations` class (from `package:flutter_gen/gen_l10n/...`).
-class AppLocalizations {
-  final Locale locale;
+import 'app_localizations_ar.dart';
+import 'app_localizations_en.dart';
 
-  AppLocalizations(this.locale);
+// ignore_for_file: type=lint
 
-  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
+/// Callers can lookup localized strings with an instance of AppLocalizations
+/// returned by `AppLocalizations.of(context)`.
+///
+/// Applications need to include `AppLocalizations.delegate()` in their app's
+/// `localizationDelegates` list, and the locales they support in the app's
+/// `supportedLocales` list. For example:
+///
+/// ```dart
+/// import 'l10n/app_localizations.dart';
+///
+/// return MaterialApp(
+///   localizationsDelegates: AppLocalizations.localizationsDelegates,
+///   supportedLocales: AppLocalizations.supportedLocales,
+///   home: MyApplicationHome(),
+/// );
+/// ```
+///
+/// ## Update pubspec.yaml
+///
+/// Please make sure to update your pubspec.yaml to include the following
+/// packages:
+///
+/// ```yaml
+/// dependencies:
+///   # Internationalization support.
+///   flutter_localizations:
+///     sdk: flutter
+///   intl: any # Use the pinned version from flutter_localizations
+///
+///   # Rest of dependencies
+/// ```
+///
+/// ## iOS Applications
+///
+/// iOS applications define key application metadata, including supported
+/// locales, in an Info.plist file that is built into the application bundle.
+/// To configure the locales supported by your app, you’ll need to edit this
+/// file.
+///
+/// First, open your project’s ios/Runner.xcworkspace Xcode workspace file.
+/// Then, in the Project Navigator, open the Info.plist file under the Runner
+/// project’s Runner folder.
+///
+/// Next, select the Information Property List item, select Add Item from the
+/// Editor menu, then select Localizations from the pop-up menu.
+///
+/// Select and expand the newly-created Localizations item then, for each
+/// locale your application supports, add a new item and select the locale
+/// you wish to add from the pop-up menu in the Value field. This list should
+/// be consistent with the languages listed in the AppLocalizations.supportedLocales
+/// property.
+abstract class AppLocalizations {
+  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
-  static const localizationsDelegates = <LocalizationsDelegate<dynamic>>[
-    delegate,
-    GlobalMaterialLocalizations.delegate,
-    GlobalWidgetsLocalizations.delegate,
-    GlobalCupertinoLocalizations.delegate,
-  ];
-
-  static const supportedLocales = [Locale('en'), Locale('ar')];
+  final String localeName;
 
   static AppLocalizations? of(BuildContext context) {
     return Localizations.of<AppLocalizations>(context, AppLocalizations);
   }
 
-  // Keys used in the settings page
-  String get settingsTitle => locale.languageCode == 'ar' ? 'الإعدادات' : 'Settings';
-    /// Label for quantity fields in forms
-    String get quantityLabel => 'Quantity';
+  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
 
-    /// Label for the items section in distribution/add forms
-    String get itemsLabel => 'Items';
+  /// A list of this localizations delegate along with the default localizations
+  /// delegates.
+  ///
+  /// Returns a list of localizations delegates containing this delegate along with
+  /// GlobalMaterialLocalizations.delegate, GlobalCupertinoLocalizations.delegate,
+  /// and GlobalWidgetsLocalizations.delegate.
+  ///
+  /// Additional delegates can be added by appending to this list in
+  /// MaterialApp. This list does not have to be used at all if a custom list
+  /// of delegates is preferred or required.
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates = <LocalizationsDelegate<dynamic>>[
+    delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+  ];
 
-    /// Label for the create/submit distribution button
-    String get createDistributionLabel => 'Create distribution';
-  String get languageLabel => locale.languageCode == 'ar' ? 'اللغة' : 'Language';
-  String get themeLabel => locale.languageCode == 'ar' ? 'المظهر' : 'Theme';
-  String get appTitle => locale.languageCode == 'ar' ? 'توزيع الألبان' : 'Dairy Distribution';
+  /// A list of this localizations delegate's supported locales.
+  static const List<Locale> supportedLocales = <Locale>[
+    Locale('ar'),
+    Locale('en')
+  ];
 
-  // Login screen and common strings
-  String get loginTitle => locale.languageCode == 'ar' ? 'توزيع الألبان' : 'Dairy Distribution';
-  String get loginSubtitle => locale.languageCode == 'ar' ? 'تسجيل الدخول إلى حسابك' : 'Login to your account';
-  String get emailLabel => locale.languageCode == 'ar' ? 'البريد الإلكتروني' : 'Email';
-  String get enterEmailHint => locale.languageCode == 'ar' ? 'أدخل بريدك الإلكتروني' : 'Enter your email';
-  String get passwordLabel => locale.languageCode == 'ar' ? 'كلمة المرور' : 'Password';
-  String get enterPasswordHint => locale.languageCode == 'ar' ? 'أدخل كلمة المرور' : 'Enter your password';
-  String get forgotPassword => locale.languageCode == 'ar' ? 'نسيت كلمة المرور؟' : 'Forgot Password?';
-  String get loginButton => locale.languageCode == 'ar' ? 'تسجيل الدخول' : 'Login';
-  String get dontHaveAccount => locale.languageCode == 'ar' ? 'ليس لديك حساب؟' : "Don't have an account?";
-  String get register => locale.languageCode == 'ar' ? 'إنشاء حساب' : 'Register';
-  String get resetPasswordTitle => locale.languageCode == 'ar' ? 'إعادة تعيين كلمة المرور' : 'Reset Password';
-  String get resetPasswordInstruction => locale.languageCode == 'ar' ? 'أدخل بريدك الإلكتروني لاستلام رابط إعادة التعيين' : 'Enter your email to receive password reset link';
-  String get cancel => locale.languageCode == 'ar' ? 'إلغاء' : 'Cancel';
-  String get send => locale.languageCode == 'ar' ? 'إرسال' : 'Send';
-  String get passwordResetSent => locale.languageCode == 'ar' ? 'تم إرسال رابط إعادة تعيين كلمة المرور' : 'Password reset email sent';
-  
-  // Home & dashboard
-  String get syncTooltip => locale.languageCode == 'ar' ? 'مزامنة البيانات' : 'Sync Data';
-  String get profile => locale.languageCode == 'ar' ? 'الملف الشخصي' : 'Profile';
-  String get settingsLabel => locale.languageCode == 'ar' ? 'الإعدادات' : 'Settings';
-  String get logout => locale.languageCode == 'ar' ? 'تسجيل الخروج' : 'Logout';
-  String get welcomeBack => locale.languageCode == 'ar' ? 'مرحباً بعودتك،' : 'Welcome back,';
-  String get userFallback => locale.languageCode == 'ar' ? 'المستخدم' : 'User';
-  String get quickActions => locale.languageCode == 'ar' ? 'إجراءات سريعة' : 'Quick Actions';
-  String get recentActivity => locale.languageCode == 'ar' ? 'النشاط الأخير' : 'Recent Activity';
-  String get newDistribution => locale.languageCode == 'ar' ? 'توزيع جديد' : 'New Distribution';
-  String get dashboardTotalSales => locale.languageCode == 'ar' ? 'إجمالي المبيعات' : 'Total Sales';
-  String get dashboardOutstanding => locale.languageCode == 'ar' ? 'المبالغ المستحقة' : 'Outstanding';
-  String get dashboardCustomers => locale.languageCode == 'ar' ? 'العملاء' : 'Customers';
-  String get dashboardLowStock => locale.languageCode == 'ar' ? 'المخزون المنخفض' : 'Low Stock';
-  String get quickDistribution => locale.languageCode == 'ar' ? 'توزيع' : 'Distribution';
-  String get quickCustomers => locale.languageCode == 'ar' ? 'العملاء' : 'Customers';
-  String get quickProducts => locale.languageCode == 'ar' ? 'المنتجات' : 'Products';
-  String get quickReports => locale.languageCode == 'ar' ? 'التقارير' : 'Reports';
-  String get quickPayments => locale.languageCode == 'ar' ? 'الدفعات' : 'Payments';
-  String get quickHistory => locale.languageCode == 'ar' ? 'السجل' : 'History';
-  String get noRecentActivity => locale.languageCode == 'ar' ? 'لا توجد نشاطات حديثة' : 'No recent activity';
-  String get paid => locale.languageCode == 'ar' ? 'مدفوع' : 'Paid';
-  String get partial => locale.languageCode == 'ar' ? 'جزئي' : 'Partial';
-  String get pending => locale.languageCode == 'ar' ? 'قيد الانتظار' : 'Pending';
-  String get logoutConfirm => locale.languageCode == 'ar' ? 'هل تريد بالتأكيد تسجيل الخروج؟' : 'Are you sure you want to logout?';
-  // Distribution / diagnostics
-  String get distributionListTitle => locale.languageCode == 'ar' ? 'قائمة التوزيع' : 'Distribution List';
-  String get firestoreReadResult => locale.languageCode == 'ar' ? 'نتيجة قراءة Firestore' : 'Firestore read result';
-  String get firestoreError => locale.languageCode == 'ar' ? 'خطأ في Firestore' : 'Firestore error';
-  String get unexpectedError => locale.languageCode == 'ar' ? 'خطأ غير متوقع' : 'Unexpected error';
-  String get localDbDistributions => locale.languageCode == 'ar' ? 'سجلات قاعدة البيانات المحلية' : 'Local DB distributions';
-  String get localDbError => locale.languageCode == 'ar' ? 'خطأ قاعدة البيانات المحلية' : 'Local DB error';
-  String get createTestDistribution => locale.languageCode == 'ar' ? 'إنشاء توزيع تجريبي' : 'Create test distribution';
-  String get createTestDistributionSuccess => locale.languageCode == 'ar' ? 'تم إنشاء توزيع تجريبي بنجاح' : 'Created test distribution successfully';
-  String get createTestDistributionFailedPrefix => locale.languageCode == 'ar' ? 'فشل في إنشاء التوزيع:' : 'Failed to create distribution:';
-  String get noDistributionsToShow => locale.languageCode == 'ar' ? 'لا توجد توزيعات للعرض' : 'No distributions to show';
-  String get showLocalDbDistributions => locale.languageCode == 'ar' ? 'عرض توزيعات قاعدة البيانات المحلية' : 'Show local DB distributions';
-  String get ok => locale.languageCode == 'ar' ? 'حسنًا' : 'OK';
-  String get notAuthenticated => locale.languageCode == 'ar' ? 'غير مصدق' : 'Not authenticated';
-  String get distributionLabel => locale.languageCode == 'ar' ? 'توزيع' : 'Distribution';
-  String get failedToLoadDistributions => locale.languageCode == 'ar' ? 'فشل في تحميل التوزيعات' : 'Failed to load distributions';
-  // Products
-  String get productsTitle => locale.languageCode == 'ar' ? 'المنتجات' : 'Products';
-  String get filterByCategoryTooltip => locale.languageCode == 'ar' ? 'تصفية حسب الفئة' : 'Filter by category';
-  String get allCategories => locale.languageCode == 'ar' ? 'كل الفئات' : 'All Categories';
-  String get searchProductsHint => locale.languageCode == 'ar' ? 'ابحث عن المنتجات...' : 'Search products...';
-  String get errorOccurred => locale.languageCode == 'ar' ? 'حدث خطأ' : 'An error occurred';
-  String get retry => locale.languageCode == 'ar' ? 'إعادة المحاولة' : 'Retry';
-  String get noProductsFound => locale.languageCode == 'ar' ? 'لم يتم العثور على منتجات' : 'No products found';
-  String get addFirstProductPrompt => locale.languageCode == 'ar' ? 'أضف منتجك الأول للبدء' : 'Add your first product to get started';
-  String get addProductTitle => locale.languageCode == 'ar' ? 'إضافة منتج' : 'Add Product';
-  String get productNameLabel => locale.languageCode == 'ar' ? 'اسم المنتج' : 'Product Name';
-  String get categoryLabel => locale.languageCode == 'ar' ? 'الفئة' : 'Category';
-  String get unitLabel => locale.languageCode == 'ar' ? 'الوحدة' : 'Unit';
-  String get priceLabel => locale.languageCode == 'ar' ? 'السعر' : 'Price';
-  String get initialStockLabel => locale.languageCode == 'ar' ? 'المخزون الأولي' : 'Initial Stock';
-  String get minStockAlertLabel => locale.languageCode == 'ar' ? 'تنبيه المخزون الأدنى' : 'Min Stock Alert';
-  String get add => locale.languageCode == 'ar' ? 'إضافة' : 'Add';
-  String get update => locale.languageCode == 'ar' ? 'تحديث' : 'Update';
-  String get close => locale.languageCode == 'ar' ? 'إغلاق' : 'Close';
-  String get updateStockTitle => locale.languageCode == 'ar' ? 'تحديث المخزون' : 'Update Stock';
-  String get currentStockPrefix => locale.languageCode == 'ar' ? 'المخزون الحالي:' : 'Current Stock:';
-  String get lowLabel => locale.languageCode == 'ar' ? 'منخفض' : 'Low';
-  String get lowStockAlert => locale.languageCode == 'ar' ? 'تنبيه نقص المخزون!' : 'Low Stock Alert!';
-  // Customers
-  String get customersTitle => locale.languageCode == 'ar' ? 'العملاء' : 'Customers';
-  String get filterByStatusTooltip => locale.languageCode == 'ar' ? 'تصفية حسب الحالة' : 'Filter by status';
-  String get allLabel => locale.languageCode == 'ar' ? 'الكل' : 'All';
-  String get activeLabel => locale.languageCode == 'ar' ? 'نشط' : 'Active';
-  String get inactiveLabel => locale.languageCode == 'ar' ? 'غير نشط' : 'Inactive';
-  String get blockedLabel => locale.languageCode == 'ar' ? 'محظور' : 'Blocked';
-  String get searchCustomersHint => locale.languageCode == 'ar' ? 'ابحث عن العملاء...' : 'Search customers...';
-  String get noCustomersFound => locale.languageCode == 'ar' ? 'لم يتم العثور على عملاء' : 'No customers found';
-  String get addFirstCustomerPrompt => locale.languageCode == 'ar' ? 'أضف عميلك الأول للبدء' : 'Add your first customer to get started';
-  String get outstandingLabel => locale.languageCode == 'ar' ? 'المستحقات' : 'Outstanding';
-  // Customer details / actions
-  String get customerDetailsTitle => locale.languageCode == 'ar' ? 'تفاصيل العميل' : 'Customer Details';
-  String get phoneLabel => locale.languageCode == 'ar' ? 'الهاتف' : 'Phone';
-  
-  String get addressLabel => locale.languageCode == 'ar' ? 'العنوان' : 'Address';
-  String get outstandingBalanceLabel => locale.languageCode == 'ar' ? 'رصيد مستحق' : 'Outstanding Balance';
-  String get payLabel => locale.languageCode == 'ar' ? 'ادفع' : 'Pay';
-  String get distributionHistoryLabel => locale.languageCode == 'ar' ? 'سجل التوزيع' : 'Distribution History';
-  String get viewAll => locale.languageCode == 'ar' ? 'عرض الكل' : 'View All';
-  String get noDistributionHistory => locale.languageCode == 'ar' ? 'لا يوجد سجل للتوزيع' : 'No distribution history';
-  String get deleteCustomerTitle => locale.languageCode == 'ar' ? 'حذف العميل' : 'Delete Customer';
-  String get deleteCustomerConfirm => locale.languageCode == 'ar' ? 'هل تريد بالتأكيد حذف هذا العميل؟ هذا الإجراء لا يمكن التراجع عنه.' : 'Are you sure you want to delete this customer? This action cannot be undone.';
-  String get deleteCancel => locale.languageCode == 'ar' ? 'إلغاء' : 'Cancel';
-  String get deleteLabel => locale.languageCode == 'ar' ? 'حذف' : 'Delete';
-  String get customerDeletedSuccess => locale.languageCode == 'ar' ? 'تم حذف العميل بنجاح' : 'Customer deleted successfully';
-  // Add/Edit Customer
-  String get addCustomerTitle => locale.languageCode == 'ar' ? 'إضافة عميل' : 'Add Customer';
-  String get editCustomerTitle => locale.languageCode == 'ar' ? 'تعديل العميل' : 'Edit Customer';
-  String get customerNameLabel => locale.languageCode == 'ar' ? 'اسم العميل' : 'Customer Name';
-  String get enterCustomerNameHint => locale.languageCode == 'ar' ? 'أدخل اسم العميل' : 'Enter customer name';
-  String get phoneNumberLabel => locale.languageCode == 'ar' ? 'رقم الهاتف' : 'Phone Number';
-  String get enterPhoneHint => locale.languageCode == 'ar' ? 'أدخل رقم الهاتف' : 'Enter phone number';
-  String get emailOptionalLabel => locale.languageCode == 'ar' ? 'البريد الإلكتروني (اختياري)' : 'Email (Optional)';
-  String get enterEmailHintShort => locale.languageCode == 'ar' ? 'أدخل البريد الإلكتروني' : 'Enter email address';
-  String get addressOptionalLabel => locale.languageCode == 'ar' ? 'العنوان (اختياري)' : 'Address (Optional)';
-  String get enterAddressHint => locale.languageCode == 'ar' ? 'أدخل العنوان' : 'Enter address';
-  String get statusLabel => locale.languageCode == 'ar' ? 'الحالة' : 'Status';
-  String get updateCustomerLabel => locale.languageCode == 'ar' ? 'تحديث العميل' : 'Update Customer';
-  String get addCustomerLabel => locale.languageCode == 'ar' ? 'إضافة عميل' : 'Add Customer';
-  String get customerUpdatedSuccess => locale.languageCode == 'ar' ? 'تم تحديث العميل بنجاح' : 'Customer updated successfully';
-  String get customerAddedSuccess => locale.languageCode == 'ar' ? 'تم إضافة العميل بنجاح' : 'Customer added successfully';
-  String get failedToSaveCustomer => locale.languageCode == 'ar' ? 'فشل في حفظ العميل' : 'Failed to save customer';
-  // Reports
-  String get reportsTitle => locale.languageCode == 'ar' ? 'التقارير' : 'Reports';
+  /// No description provided for @appTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Dairy Distribution'**
+  String get appTitle;
 
-  // --- مفاتيح جديدة تمت إضافتها ---
-  String get confirm=>locale.languageCode=='ar'?'تأكيد':'Confirm';
-  String get reportType => locale.languageCode == 'ar' ? 'نوع التقرير' : 'Report Type';
-  String get reportTypeSummary => locale.languageCode == 'ar' ? 'ملخص' : 'Summary';
-  String get reportTypeDetailed => locale.languageCode == 'ar' ? 'تفصيلي' : 'Detailed';
-  String get selectCustomer => locale.languageCode == 'ar' ? 'اختر العميل' : 'Select Customer';
-  String get allCustomers => locale.languageCode == 'ar' ? 'كل العملاء' : 'All Customers';
-  String get selectProducts => locale.languageCode == 'ar' ? 'اختر المنتجات' : 'Select Products';
-  String productsSelected(Object count) => locale.languageCode == 'ar' ? '$count منتجات تم اختيارها' : '$count products selected';
-  String get generateReport => locale.languageCode == 'ar' ? 'إنشاء التقرير' : 'Generate Report';
-  String get selectDateRange => locale.languageCode == 'ar' ? 'اختر نطاق التاريخ' : 'Select Date Range';
-  String get fromLabel => locale.languageCode == 'ar' ? 'من' : 'From';
-  String get toLabel => locale.languageCode == 'ar' ? 'إلى' : 'To';
-  String get salesReportTitle => locale.languageCode == 'ar' ? 'تقرير المبيعات' : 'Sales Report';
-  String get salesReportSubtitle => locale.languageCode == 'ar' ? 'عرض ملخص وإحصاءات المبيعات' : 'View sales summary and statistics';
-  String get inventoryReportTitle => locale.languageCode == 'ar' ? 'تقرير المخزون' : 'Inventory Report';
-  String get inventoryReportSubtitle => locale.languageCode == 'ar' ? 'المخزون الحالي وتفاصيل المنتج' : 'Current stock and product details';
-  String get outstandingReportTitle => locale.languageCode == 'ar' ? 'تقرير المستحقات' : 'Outstanding Report';
-  String get outstandingReportSubtitle => locale.languageCode == 'ar' ? 'العملاء ذوي المدفوعات المعلقة' : 'Customers with pending payments';
-  String get exportAsPdf => locale.languageCode == 'ar' ? 'تصدير كـ PDF' : 'Export as PDF';
-  String get exportAsExcel => locale.languageCode == 'ar' ? 'تصدير كـ Excel' : 'Export as Excel';
-  String get reportGeneratedTitle => locale.languageCode == 'ar' ? 'تم إنشاء التقرير' : 'Report Generated';
-  String get reportGeneratedPrompt => locale.languageCode == 'ar' ? 'ماذا تريد أن تفعل بالتقرير؟' : 'What would you like to do with the report?';
-  String get openLabel => locale.languageCode == 'ar' ? 'فتح' : 'Open';
-  String get shareLabel => locale.languageCode == 'ar' ? 'مشاركة' : 'Share';
-  // Settings small labels
-  String get english => locale.languageCode == 'ar' ? 'الإنجليزية' : 'English';
-  String get arabic => locale.languageCode == 'ar' ? 'العربية' : 'العربية';
-  String get lightModeLabel => locale.languageCode == 'ar' ? 'فاتح' : 'Light';
-  String get darkModeLabel => locale.languageCode == 'ar' ? 'داكن' : 'Dark';
-  String get testFirestoreAccess => locale.languageCode == 'ar' ? 'اختبار وصول Firestore' : 'Test Firestore access';
-  
-  // Payments / pending distributions
-  String get paymentRecorded => locale.languageCode == 'ar' ? 'تم تسجيل الدفعة' : 'Payment recorded';
-  String get pendingDistributionsTitle => locale.languageCode == 'ar' ? 'التوزيعات المعلقة' : 'Pending Distributions';
-  String get noPendingDistributions => locale.languageCode == 'ar' ? 'لا توجد توزيعات معلقة' : 'No pending distributions';
-  String get noCustomersWithOutstanding => locale.languageCode == 'ar' ? 'لا يوجد عملاء بمبالغ مستحقة' : 'No customers with outstanding balances';
-  String get noPendingDistributionsForCustomer => locale.languageCode == 'ar' ? 'لا توجد توزيعات معلقة لهذا العميل' : 'No pending distributions for this customer';
+  /// No description provided for @settings_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settings_title;
 
-  // Suppliers & Purchases
-  String get suppliersTitle => locale.languageCode == 'ar' ? 'الموردين' : 'Suppliers';
-  String get noSuppliersFound => locale.languageCode == 'ar' ? 'لا يوجد موردين' : 'No suppliers found';
-  String get supplierName => locale.languageCode == 'ar' ? 'اسم المورد' : 'Supplier Name';
-  String get addSupplierTitle => locale.languageCode == 'ar' ? 'إضافة مورد' : 'Add Supplier';
-  String get editSupplierTitle => locale.languageCode == 'ar' ? 'تعديل مورد' : 'Edit Supplier';
-  String get confirmDeleteSupplier => locale.languageCode == 'ar' ? 'تأكيد حذف المورد' : 'Confirm Delete Supplier';
-  String get contact => locale.languageCode == 'ar' ? 'التواصل' : 'Contact';
-  String get address => locale.languageCode == 'ar' ? 'العنوان' : 'Address';
-  String get delete => locale.languageCode == 'ar' ? 'حذف' : 'Delete';
-  String get addPurchaseTitle => locale.languageCode == 'ar' ? 'إضافة عملية شراء' : 'Add Purchase';
-  String get productLabel => locale.languageCode == 'ar' ? 'المنتج' : 'Product';
-  String get supplierLabel => locale.languageCode == 'ar' ? 'المورد' : 'Supplier';
-  String get addPurchaseButtonLabel => locale.languageCode == 'ar' ? 'إضافة شراء' : 'Add Purchase';
+  /// No description provided for @language_label.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get language_label;
 
-  // Suppliers messages and utilities
-  String get supplierNameRequired => locale.languageCode == 'ar' ? 'اسم المورد مطلوب' : 'Supplier name is required';
-  String get supplierAddedSuccess => locale.languageCode == 'ar' ? 'تم إضافة المورد بنجاح' : 'Supplier added successfully';
-  String get supplierUpdatedSuccess => locale.languageCode == 'ar' ? 'تم تحديث المورد بنجاح' : 'Supplier updated successfully';
-  String get supplierDeletedSuccess => locale.languageCode == 'ar' ? 'تم حذف المورد بنجاح' : 'Supplier deleted successfully';
-  String get undo => locale.languageCode == 'ar' ? 'تراجع' : 'Undo';
+  /// No description provided for @theme_label.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get theme_label;
+
+  /// No description provided for @dark_mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark Mode'**
+  String get dark_mode;
+
+  /// No description provided for @english.
+  ///
+  /// In en, this message translates to:
+  /// **'English'**
+  String get english;
+
+  /// No description provided for @arabic.
+  ///
+  /// In en, this message translates to:
+  /// **'Arabic'**
+  String get arabic;
+
+  /// No description provided for @login_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Dairy Distribution'**
+  String get login_title;
+
+  /// No description provided for @login_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Login to your account'**
+  String get login_subtitle;
+
+  /// No description provided for @email_label.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get email_label;
+
+  /// No description provided for @enter_email_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your email'**
+  String get enter_email_hint;
+
+  /// No description provided for @password_label.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get password_label;
+
+  /// No description provided for @enter_password_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your password'**
+  String get enter_password_hint;
+
+  /// No description provided for @forgot_password.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot Password?'**
+  String get forgot_password;
+
+  /// No description provided for @login_button.
+  ///
+  /// In en, this message translates to:
+  /// **'Login'**
+  String get login_button;
+
+  /// No description provided for @dont_have_account.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t have an account?'**
+  String get dont_have_account;
+
+  /// No description provided for @register.
+  ///
+  /// In en, this message translates to:
+  /// **'Register'**
+  String get register;
+
+  /// No description provided for @reset_password_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Password'**
+  String get reset_password_title;
+
+  /// No description provided for @reset_password_instruction.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your email to receive password reset link'**
+  String get reset_password_instruction;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @send.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get send;
+
+  /// No description provided for @password_reset_sent.
+  ///
+  /// In en, this message translates to:
+  /// **'Password reset email sent'**
+  String get password_reset_sent;
+
+  /// No description provided for @sync_tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync Data'**
+  String get sync_tooltip;
+
+  /// No description provided for @profile.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get profile;
+
+  /// No description provided for @settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settings;
+
+  /// No description provided for @logout.
+  ///
+  /// In en, this message translates to:
+  /// **'Logout'**
+  String get logout;
+
+  /// No description provided for @welcome_back.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome back,'**
+  String get welcome_back;
+
+  /// No description provided for @user_fallback.
+  ///
+  /// In en, this message translates to:
+  /// **'User'**
+  String get user_fallback;
+
+  /// No description provided for @quick_actions.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick Actions'**
+  String get quick_actions;
+
+  /// No description provided for @recent_activity.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent Activity'**
+  String get recent_activity;
+
+  /// No description provided for @new_distribution.
+  ///
+  /// In en, this message translates to:
+  /// **'New Distribution'**
+  String get new_distribution;
+
+  /// No description provided for @dashboard_total_sales.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Sales'**
+  String get dashboard_total_sales;
+
+  /// No description provided for @dashboard_outstanding.
+  ///
+  /// In en, this message translates to:
+  /// **'Outstanding'**
+  String get dashboard_outstanding;
+
+  /// No description provided for @dashboard_customers.
+  ///
+  /// In en, this message translates to:
+  /// **'Customers'**
+  String get dashboard_customers;
+
+  /// No description provided for @dashboard_low_stock.
+  ///
+  /// In en, this message translates to:
+  /// **'Low Stock'**
+  String get dashboard_low_stock;
+
+  /// No description provided for @quick_distribution.
+  ///
+  /// In en, this message translates to:
+  /// **'Distribution'**
+  String get quick_distribution;
+
+  /// No description provided for @quick_customers.
+  ///
+  /// In en, this message translates to:
+  /// **'Customers'**
+  String get quick_customers;
+
+  /// No description provided for @quick_products.
+  ///
+  /// In en, this message translates to:
+  /// **'Products'**
+  String get quick_products;
+
+  /// No description provided for @quick_reports.
+  ///
+  /// In en, this message translates to:
+  /// **'Reports'**
+  String get quick_reports;
+
+  /// No description provided for @quick_payments.
+  ///
+  /// In en, this message translates to:
+  /// **'Payments'**
+  String get quick_payments;
+
+  /// No description provided for @quick_history.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get quick_history;
+
+  /// No description provided for @no_recent_activity.
+  ///
+  /// In en, this message translates to:
+  /// **'No recent activity'**
+  String get no_recent_activity;
+
+  /// No description provided for @paid.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid'**
+  String get paid;
+
+  /// No description provided for @partial.
+  ///
+  /// In en, this message translates to:
+  /// **'Partial'**
+  String get partial;
+
+  /// No description provided for @pending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get pending;
+
+  /// No description provided for @logout_confirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to logout?'**
+  String get logout_confirm;
+
+  /// No description provided for @suppliersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Suppliers'**
+  String get suppliersTitle;
+
+  /// No description provided for @noSuppliersFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No suppliers found'**
+  String get noSuppliersFound;
+
+  /// No description provided for @supplierName.
+  ///
+  /// In en, this message translates to:
+  /// **'Supplier Name'**
+  String get supplierName;
+
+  /// No description provided for @addSupplierTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Supplier'**
+  String get addSupplierTitle;
+
+  /// No description provided for @editSupplierTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Supplier'**
+  String get editSupplierTitle;
+
+  /// No description provided for @confirmDeleteSupplier.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Delete Supplier'**
+  String get confirmDeleteSupplier;
+
+  /// No description provided for @contact.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact'**
+  String get contact;
+
+  /// No description provided for @address.
+  ///
+  /// In en, this message translates to:
+  /// **'Address'**
+  String get address;
+
+  /// No description provided for @delete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get delete;
+
+  /// No description provided for @addPurchaseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Purchase'**
+  String get addPurchaseTitle;
+
+  /// No description provided for @productLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Product'**
+  String get productLabel;
+
+  /// No description provided for @supplierLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Supplier'**
+  String get supplierLabel;
+
+  /// No description provided for @addPurchaseButtonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Purchase'**
+  String get addPurchaseButtonLabel;
+
+  /// Label for the optional free quantity field in Add Purchase Screen
+  ///
+  /// In en, this message translates to:
+  /// **'Free Quantity (optional)'**
+  String get freeQuantityLabel;
+
+  /// No description provided for @priceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Price'**
+  String get priceLabel;
+
+  /// No description provided for @quantityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Quantity'**
+  String get quantityLabel;
+
+  /// No description provided for @productsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Products'**
+  String get productsTitle;
+
+  /// No description provided for @filterByCategoryTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter by Category'**
+  String get filterByCategoryTooltip;
+
+  /// No description provided for @allCategories.
+  ///
+  /// In en, this message translates to:
+  /// **'All Categories'**
+  String get allCategories;
+
+  /// No description provided for @searchProductsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search products...'**
+  String get searchProductsHint;
+
+  /// No description provided for @errorOccurred.
+  ///
+  /// In en, this message translates to:
+  /// **'An error occurred'**
+  String get errorOccurred;
+
+  /// No description provided for @retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get retry;
+
+  /// No description provided for @noProductsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No products found'**
+  String get noProductsFound;
+
+  /// No description provided for @addFirstProductPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Add your first product by clicking the + button'**
+  String get addFirstProductPrompt;
+
+  /// No description provided for @lowLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get lowLabel;
+
+  /// No description provided for @currentStockPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'Current Stock: '**
+  String get currentStockPrefix;
+
+  /// No description provided for @addProductTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Product'**
+  String get addProductTitle;
+
+  /// No description provided for @productNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Product Name'**
+  String get productNameLabel;
+
+  /// No description provided for @categoryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get categoryLabel;
+
+  /// No description provided for @unitLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit'**
+  String get unitLabel;
+
+  /// No description provided for @minStockAlertLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Min Stock Alert'**
+  String get minStockAlertLabel;
+
+  /// No description provided for @addProductButtonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Product'**
+  String get addProductButtonLabel;
+
+  /// No description provided for @lowStockAlertTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Low Stock Alert'**
+  String get lowStockAlertTitle;
+
+  /// No description provided for @close.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get close;
+
+  /// No description provided for @supplierNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Supplier name is required'**
+  String get supplierNameRequired;
+
+  /// No description provided for @supplierAddedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Supplier added successfully'**
+  String get supplierAddedSuccess;
+
+  /// No description provided for @supplierUpdatedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Supplier updated successfully'**
+  String get supplierUpdatedSuccess;
+
+  /// No description provided for @supplierDeletedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Supplier deleted successfully'**
+  String get supplierDeletedSuccess;
+
+  /// No description provided for @undo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get undo;
+
+  /// No description provided for @payLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Pay'**
+  String get payLabel;
+
+  /// No description provided for @outstandingBalanceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Outstanding Balance'**
+  String get outstandingBalanceLabel;
+
+  /// No description provided for @paymentRecorded.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment recorded successfully'**
+  String get paymentRecorded;
+
+  /// No description provided for @settingsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settingsLabel;
+
+  /// No description provided for @welcomeBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome back,'**
+  String get welcomeBack;
+
+  /// No description provided for @userFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'User'**
+  String get userFallback;
+
+  /// No description provided for @quickActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick Actions'**
+  String get quickActions;
+
+  /// No description provided for @recentActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent Activity'**
+  String get recentActivity;
+
+  /// No description provided for @newDistribution.
+  ///
+  /// In en, this message translates to:
+  /// **'New Distribution'**
+  String get newDistribution;
+
+  /// No description provided for @dashboardTotalSales.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Sales'**
+  String get dashboardTotalSales;
+
+  /// No description provided for @dashboardOutstanding.
+  ///
+  /// In en, this message translates to:
+  /// **'Outstanding'**
+  String get dashboardOutstanding;
+
+  /// No description provided for @dashboardCustomers.
+  ///
+  /// In en, this message translates to:
+  /// **'Customers'**
+  String get dashboardCustomers;
+
+  /// No description provided for @dashboardLowStock.
+  ///
+  /// In en, this message translates to:
+  /// **'Low Stock'**
+  String get dashboardLowStock;
+
+  /// No description provided for @quickDistribution.
+  ///
+  /// In en, this message translates to:
+  /// **'Distribution'**
+  String get quickDistribution;
+
+  /// No description provided for @quickCustomers.
+  ///
+  /// In en, this message translates to:
+  /// **'Customers'**
+  String get quickCustomers;
+
+  /// No description provided for @quickProducts.
+  ///
+  /// In en, this message translates to:
+  /// **'Products'**
+  String get quickProducts;
+
+  /// No description provided for @quickReports.
+  ///
+  /// In en, this message translates to:
+  /// **'Reports'**
+  String get quickReports;
+
+  /// No description provided for @quickPayments.
+  ///
+  /// In en, this message translates to:
+  /// **'Payments'**
+  String get quickPayments;
+
+  /// No description provided for @quickHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get quickHistory;
+
+  /// No description provided for @noRecentActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'No recent activity'**
+  String get noRecentActivity;
+
+  /// No description provided for @logoutConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to logout?'**
+  String get logoutConfirm;
+
+  /// No description provided for @notAuthenticated.
+  ///
+  /// In en, this message translates to:
+  /// **'Not authenticated'**
+  String get notAuthenticated;
+
+  /// No description provided for @firestoreReadResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Firestore read result'**
+  String get firestoreReadResult;
+
+  /// No description provided for @ok.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get ok;
+
+  /// No description provided for @firestoreError.
+  ///
+  /// In en, this message translates to:
+  /// **'Firestore error'**
+  String get firestoreError;
+
+  /// No description provided for @unexpectedError.
+  ///
+  /// In en, this message translates to:
+  /// **'Unexpected error'**
+  String get unexpectedError;
+
+  /// No description provided for @distributionListTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Distributions'**
+  String get distributionListTitle;
+
+  /// No description provided for @failedToLoadDistributions.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load distributions'**
+  String get failedToLoadDistributions;
+
+  /// No description provided for @noDistributionsToShow.
+  ///
+  /// In en, this message translates to:
+  /// **'No distributions to show'**
+  String get noDistributionsToShow;
+
+  /// No description provided for @deleteLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get deleteLabel;
+
+  /// No description provided for @deleteCustomerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete distribution'**
+  String get deleteCustomerTitle;
+
+  /// No description provided for @deleteCustomerConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this distribution?'**
+  String get deleteCustomerConfirm;
+
+  /// No description provided for @distributionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Distribution'**
+  String get distributionLabel;
+
+  /// No description provided for @deleteCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get deleteCancel;
+
+  /// No description provided for @customerDetailsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer details'**
+  String get customerDetailsTitle;
+
+  /// No description provided for @confirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get confirm;
+
+  /// No description provided for @outstandingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Outstanding'**
+  String get outstandingLabel;
+
+  /// No description provided for @createDistributionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Create distribution'**
+  String get createDistributionLabel;
+
+  /// No description provided for @customersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Customers'**
+  String get customersTitle;
+
+  /// No description provided for @itemsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Items'**
+  String get itemsLabel;
+
+  /// No description provided for @add.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get add;
+
+  /// No description provided for @createTestDistributionSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Distribution created successfully'**
+  String get createTestDistributionSuccess;
+
+  /// No description provided for @distributionDeletedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Distribution deleted successfully'**
+  String get distributionDeletedSuccess;
+
+  /// No description provided for @update.
+  ///
+  /// In en, this message translates to:
+  /// **'Update'**
+  String get update;
+
+  /// No description provided for @reportsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reports'**
+  String get reportsTitle;
+
+  /// No description provided for @selectDateRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Select date range'**
+  String get selectDateRange;
+
+  /// No description provided for @fromLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get fromLabel;
+
+  /// No description provided for @toLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get toLabel;
+
+  /// No description provided for @salesReportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sales report'**
+  String get salesReportTitle;
+
+  /// No description provided for @salesReportSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'View sales in the selected period'**
+  String get salesReportSubtitle;
+
+  /// No description provided for @inventoryReportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Inventory report'**
+  String get inventoryReportTitle;
+
+  /// No description provided for @inventoryReportSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Check stock and product movements'**
+  String get inventoryReportSubtitle;
+
+  /// No description provided for @outstandingReportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Outstanding balances report'**
+  String get outstandingReportTitle;
+
+  /// No description provided for @outstandingReportSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'View customers\' outstanding balances'**
+  String get outstandingReportSubtitle;
+
+  /// No description provided for @generateReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate report'**
+  String get generateReport;
+
+  /// No description provided for @reportType.
+  ///
+  /// In en, this message translates to:
+  /// **'Report type'**
+  String get reportType;
+
+  /// No description provided for @reportTypeSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary'**
+  String get reportTypeSummary;
+
+  /// No description provided for @reportTypeDetailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Detailed'**
+  String get reportTypeDetailed;
+
+  /// No description provided for @selectCustomer.
+  ///
+  /// In en, this message translates to:
+  /// **'Select customer'**
+  String get selectCustomer;
+
+  /// No description provided for @allCustomers.
+  ///
+  /// In en, this message translates to:
+  /// **'All customers'**
+  String get allCustomers;
+
+  /// No description provided for @selectProducts.
+  ///
+  /// In en, this message translates to:
+  /// **'Select products'**
+  String get selectProducts;
+
+  /// Label showing how many products are selected in reports filter
+  ///
+  /// In en, this message translates to:
+  /// **'{count} products selected'**
+  String productsSelected(int count);
+
+  /// No description provided for @exportAsPdf.
+  ///
+  /// In en, this message translates to:
+  /// **'Export as PDF'**
+  String get exportAsPdf;
+
+  /// No description provided for @exportAsExcel.
+  ///
+  /// In en, this message translates to:
+  /// **'Export as Excel'**
+  String get exportAsExcel;
+
+  /// No description provided for @reportGeneratedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Report generated'**
+  String get reportGeneratedTitle;
+
+  /// No description provided for @reportGeneratedPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'What would you like to do with the file?'**
+  String get reportGeneratedPrompt;
+
+  /// No description provided for @openLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get openLabel;
+
+  /// No description provided for @customerUpdatedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer updated successfully'**
+  String get customerUpdatedSuccess;
+
+  /// No description provided for @customerAddedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer added successfully'**
+  String get customerAddedSuccess;
+
+  /// No description provided for @failedToSaveCustomer.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to save customer'**
+  String get failedToSaveCustomer;
+
+  /// No description provided for @editCustomerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit customer'**
+  String get editCustomerTitle;
+
+  /// No description provided for @addCustomerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add customer'**
+  String get addCustomerTitle;
+
+  /// No description provided for @customerNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer name'**
+  String get customerNameLabel;
+
+  /// No description provided for @enterCustomerNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter customer name'**
+  String get enterCustomerNameHint;
+
+  /// No description provided for @phoneNumberLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone number'**
+  String get phoneNumberLabel;
+
+  /// No description provided for @enterPhoneHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter phone number'**
+  String get enterPhoneHint;
+
+  /// No description provided for @emailOptionalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Email (optional)'**
+  String get emailOptionalLabel;
+
+  /// No description provided for @enterEmailHintShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter email'**
+  String get enterEmailHintShort;
+
+  /// No description provided for @addressOptionalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Address (optional)'**
+  String get addressOptionalLabel;
+
+  /// No description provided for @enterAddressHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter address'**
+  String get enterAddressHint;
+
+  /// No description provided for @statusLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get statusLabel;
+
+  /// No description provided for @updateCustomerLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Update customer'**
+  String get updateCustomerLabel;
+
+  /// No description provided for @addCustomerLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Add customer'**
+  String get addCustomerLabel;
+
+  /// No description provided for @phoneLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone'**
+  String get phoneLabel;
+
+  /// No description provided for @emailLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get emailLabel;
+
+  /// No description provided for @addressLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Address'**
+  String get addressLabel;
+
+  /// No description provided for @distributionHistoryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Distribution history'**
+  String get distributionHistoryLabel;
+
+  /// No description provided for @viewAll.
+  ///
+  /// In en, this message translates to:
+  /// **'View all'**
+  String get viewAll;
+
+  /// No description provided for @noDistributionHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'No distribution history'**
+  String get noDistributionHistory;
+
+  /// No description provided for @customerDeletedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer deleted successfully'**
+  String get customerDeletedSuccess;
+
+  /// No description provided for @filterByStatusTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter by status'**
+  String get filterByStatusTooltip;
+
+  /// No description provided for @allLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get allLabel;
+
+  /// No description provided for @activeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get activeLabel;
+
+  /// No description provided for @inactiveLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Inactive'**
+  String get inactiveLabel;
+
+  /// No description provided for @blockedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked'**
+  String get blockedLabel;
+
+  /// No description provided for @searchCustomersHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search customers...'**
+  String get searchCustomersHint;
+
+  /// No description provided for @noCustomersFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No customers found'**
+  String get noCustomersFound;
+
+  /// No description provided for @addFirstCustomerPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Add your first customer using the + button'**
+  String get addFirstCustomerPrompt;
+
+  /// No description provided for @loginTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Dairy Distribution'**
+  String get loginTitle;
+
+  /// No description provided for @loginSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Login to your account'**
+  String get loginSubtitle;
+
+  /// No description provided for @enterEmailHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your email'**
+  String get enterEmailHint;
+
+  /// No description provided for @passwordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get passwordLabel;
+
+  /// No description provided for @enterPasswordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your password'**
+  String get enterPasswordHint;
+
+  /// No description provided for @forgotPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot Password?'**
+  String get forgotPassword;
+
+  /// No description provided for @loginButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Login'**
+  String get loginButton;
+
+  /// No description provided for @dontHaveAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t have an account?'**
+  String get dontHaveAccount;
+
+  /// No description provided for @resetPasswordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Password'**
+  String get resetPasswordTitle;
+
+  /// No description provided for @resetPasswordInstruction.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your email to receive password reset link'**
+  String get resetPasswordInstruction;
+
+  /// No description provided for @passwordResetSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Password reset email sent'**
+  String get passwordResetSent;
+
+  /// No description provided for @settingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settingsTitle;
+
+  /// No description provided for @languageLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get languageLabel;
+
+  /// No description provided for @themeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get themeLabel;
+
+  /// No description provided for @lightModeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Light mode'**
+  String get lightModeLabel;
+
+  /// No description provided for @darkModeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark mode'**
+  String get darkModeLabel;
+
+  /// No description provided for @testFirestoreAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Test Firestore access'**
+  String get testFirestoreAccess;
+
+  /// No description provided for @shareLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get shareLabel;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
-  bool isSupported(Locale locale) => ['en', 'ar'].contains(locale.languageCode);
+  Future<AppLocalizations> load(Locale locale) {
+    return SynchronousFuture<AppLocalizations>(lookupAppLocalizations(locale));
+  }
 
   @override
-  Future<AppLocalizations> load(Locale locale) async => AppLocalizations(locale);
+  bool isSupported(Locale locale) => <String>['ar', 'en'].contains(locale.languageCode);
 
   @override
-  bool shouldReload(LocalizationsDelegate<AppLocalizations> old) => false;
+  bool shouldReload(_AppLocalizationsDelegate old) => false;
+}
+
+AppLocalizations lookupAppLocalizations(Locale locale) {
+
+
+  // Lookup logic when only language code is specified.
+  switch (locale.languageCode) {
+    case 'ar': return AppLocalizationsAr();
+    case 'en': return AppLocalizationsEn();
+  }
+
+  throw FlutterError(
+    'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
+    'an issue with the localizations generation tool. Please file an issue '
+    'on GitHub with a reproducible sample app and the gen-l10n configuration '
+    'that was used.'
+  );
 }

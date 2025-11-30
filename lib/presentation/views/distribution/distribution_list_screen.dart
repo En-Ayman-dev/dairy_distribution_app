@@ -173,7 +173,7 @@ class _DistributionListScreenState extends State<DistributionListScreen> {
       name: 'DistributionListScreen',
     );
     final t = AppLocalizations.of(context)!;
-    final isAr = t.locale.languageCode == 'ar';
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
     final printTooltip = isAr ? 'طباعة' : 'Print';
     final editTooltip = isAr ? 'تعديل' : 'Edit';
 
@@ -762,7 +762,7 @@ class _DistributionListScreenState extends State<DistributionListScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '${t.distributionLabel} ${dist.id} ${t.customerDeletedSuccess}',
+              '${t.distributionLabel} ${dist.id} ${t.distributionDeletedSuccess}',
             ),
             backgroundColor: Colors.green,
           ),

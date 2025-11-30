@@ -52,7 +52,9 @@ class PurchaseRemoteDataSourceImpl implements PurchaseRemoteDataSource {
         }
 
         final currentStock = (productSnapshot.data() as Map<String, dynamic>?)?['stock'] as num? ?? 0.0;
-        final newStock = (currentStock).toDouble() + purchase.quantity;
+        
+        // --- التعديل هنا: إضافة الكمية المشتراة + الكمية المجانية إلى المخزون ---
+        final newStock = (currentStock).toDouble() + purchase.quantity + purchase.freeQuantity;
 
         // update product's stock and price (update price to latest purchase price)
         transaction.set(docRef, purchase.toJson());

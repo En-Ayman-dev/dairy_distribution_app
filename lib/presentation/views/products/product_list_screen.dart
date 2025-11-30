@@ -366,7 +366,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 Navigator.of(this.context).pop();
               }
             },
-            child: Text(AppLocalizations.of(context)!.add),
+            child: Text(AppLocalizations.of(context)!.addProductButtonLabel),
           ),
         ],
       ),
@@ -388,7 +388,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
             Text('${AppLocalizations.of(context)!.minStockAlertLabel}: ${product.minStock} ${product.unit}'),
             if (product.isLowStock)
               Text(
-                AppLocalizations.of(context)!.lowStockAlert,
+                AppLocalizations.of(context)!.lowStockAlertTitle,
                 style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
               ),
           ],

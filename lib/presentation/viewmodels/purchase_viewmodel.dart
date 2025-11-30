@@ -36,12 +36,20 @@ class PurchaseViewModel extends ChangeNotifier {
     });
   }
 
-  Future<bool> addPurchase({required String productId, required String supplierId, required double quantity, required double price}) async {
+  // تم تحديث الدالة لإضافة freeQuantity كمعامل اختياري
+  Future<bool> addPurchase({
+    required String productId,
+    required String supplierId,
+    required double quantity,
+    double freeQuantity = 0.0, // القيمة الافتراضية 0
+    required double price,
+  }) async {
     final purchase = Purchase(
       id: _uuid.v4(),
       productId: productId,
       supplierId: supplierId,
       quantity: quantity,
+      freeQuantity: freeQuantity, // تمرير الكمية المجانية
       price: price,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
