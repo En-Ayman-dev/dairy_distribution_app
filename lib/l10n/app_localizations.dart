@@ -1612,6 +1612,216 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Free'**
   String get freeLabel;
+
+  /// No description provided for @purchasesReportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchases Report'**
+  String get purchasesReportTitle;
+
+  /// No description provided for @purchasesReportSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Detailed financial purchase report'**
+  String get purchasesReportSubtitle;
+
+  /// No description provided for @customizeReportButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Customize Report'**
+  String get customizeReportButton;
+
+  /// No description provided for @selectColumnsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Report Columns'**
+  String get selectColumnsTitle;
+
+  /// No description provided for @saveAsDefaultConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'Save as default'**
+  String get saveAsDefaultConfig;
+
+  /// No description provided for @colSupplier.
+  ///
+  /// In en, this message translates to:
+  /// **'Supplier'**
+  String get colSupplier;
+
+  /// No description provided for @colDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get colDate;
+
+  /// No description provided for @colItemsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Items Count'**
+  String get colItemsCount;
+
+  /// No description provided for @colTotalAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Amount'**
+  String get colTotalAmount;
+
+  /// No description provided for @colDiscount.
+  ///
+  /// In en, this message translates to:
+  /// **'Discount'**
+  String get colDiscount;
+
+  /// No description provided for @colNetTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Net Total'**
+  String get colNetTotal;
+
+  /// No description provided for @colPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid'**
+  String get colPaid;
+
+  /// No description provided for @colRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'Remaining'**
+  String get colRemaining;
+
+  /// No description provided for @colStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get colStatus;
+
+  /// No description provided for @reportGeneratedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Report generated successfully'**
+  String get reportGeneratedSuccess;
+
+  /// No description provided for @totalSummaryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Grand Total'**
+  String get totalSummaryLabel;
+
+  /// No description provided for @generateViewButton.
+  ///
+  /// In en, this message translates to:
+  /// **'View Report'**
+  String get generateViewButton;
+
+  /// No description provided for @reportTypeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Report Type'**
+  String get reportTypeTitle;
+
+  /// No description provided for @reportTypeDetailedItems.
+  ///
+  /// In en, this message translates to:
+  /// **'Detailed (Items Movement)'**
+  String get reportTypeDetailedItems;
+
+  /// No description provided for @reportTypeStatement.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary (Statement of Account)'**
+  String get reportTypeStatement;
+
+  /// No description provided for @colInvoiceNum.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice #'**
+  String get colInvoiceNum;
+
+  /// No description provided for @colProduct.
+  ///
+  /// In en, this message translates to:
+  /// **'Product'**
+  String get colProduct;
+
+  /// No description provided for @colQty.
+  ///
+  /// In en, this message translates to:
+  /// **'Qty'**
+  String get colQty;
+
+  /// No description provided for @colFreeQty.
+  ///
+  /// In en, this message translates to:
+  /// **'Free'**
+  String get colFreeQty;
+
+  /// No description provided for @colPrice.
+  ///
+  /// In en, this message translates to:
+  /// **'Price'**
+  String get colPrice;
+
+  /// No description provided for @colReturnedQty.
+  ///
+  /// In en, this message translates to:
+  /// **'Returned Qty'**
+  String get colReturnedQty;
+
+  /// No description provided for @colReturnedVal.
+  ///
+  /// In en, this message translates to:
+  /// **'Returned Value'**
+  String get colReturnedVal;
+
+  /// No description provided for @colDebit.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice Amount'**
+  String get colDebit;
+
+  /// No description provided for @colCredit.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid'**
+  String get colCredit;
+
+  /// No description provided for @colBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance'**
+  String get colBalance;
+
+  /// No description provided for @supplierHeaderName.
+  ///
+  /// In en, this message translates to:
+  /// **'Supplier'**
+  String get supplierHeaderName;
+
+  /// No description provided for @supplierHeaderPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone'**
+  String get supplierHeaderPhone;
+
+  /// No description provided for @supplierHeaderAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Address'**
+  String get supplierHeaderAddress;
+
+  /// No description provided for @grandTotalPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Paid'**
+  String get grandTotalPaid;
+
+  /// No description provided for @grandTotalRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Remaining'**
+  String get grandTotalRemaining;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -4,8 +4,14 @@ import 'package:dairy_distribution_app/presentation/views/payments/payments_scre
 import '../../../domain/entities/distribution.dart';
 import '../../viewmodels/customer_viewmodel.dart';
 import '../../viewmodels/distribution_viewmodel.dart';
+import '../../viewmodels/auth_viewmodel.dart'; // لجلب اسم المستخدم
 import '../../../l10n/app_localizations.dart';
 import 'dart:developer' as developer;
+import 'package:open_file/open_file.dart'; // لفتح ملف الـ PDF
+
+// --- الاستيرادات الجديدة للطباعة ---
+import '../../widgets/print_button.dart';
+import '../../../core/utils/thermal_invoice_generator.dart';
 
 class DistributionDetailScreen extends StatefulWidget {
   final Distribution distribution;
@@ -13,16 +19,16 @@ class DistributionDetailScreen extends StatefulWidget {
   const DistributionDetailScreen({super.key, required this.distribution});
 
   @override
-  State<DistributionDetailScreen> createState() => _DistributionDetailScreenState();
+  State<DistributionDetailScreen> createState() =>
+      _DistributionDetailScreenState();
 }
 
 class _DistributionDetailScreenState extends State<DistributionDetailScreen> {
   bool _isRecording = false;
+  bool _isPrinting = false; // حالة تحميل الطباعة
   Distribution? _currentDistribution;
 
   Future<void> _showRecordPaymentDialog() async {
-    // Instead of showing an inline dialog, navigate to the centralized
-    // CustomerPaymentPage so all payment UI/logic is consistent.
     final vm = context.read<CustomerViewModel>();
     final t = AppLocalizations.of(context)!;
 
@@ -33,26 +39,29 @@ class _DistributionDetailScreenState extends State<DistributionDetailScreen> {
     final customer = vm.selectedCustomer;
     if (customer == null) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(t.errorOccurred)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(t.errorOccurred)));
       return;
     }
 
-    // Push the shared payment page. When it returns, refresh data to reflect
-    // any payments that may have been recorded there.
     final paymentResult = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => CustomerPaymentPage(customer: customer, distributionId: widget.distribution.id)),
+      MaterialPageRoute(
+        builder: (_) => CustomerPaymentPage(
+          customer: customer,
+          distributionId: widget.distribution.id,
+        ),
+      ),
     );
 
-    // If the payment page returned true, a payment was recorded and we
-    // should refresh the distribution. Otherwise skip the reload.
     if (paymentResult != true) return;
 
     if (!mounted) return;
     setState(() => _isRecording = true);
-    await context.read<DistributionViewModel>().getDistributionById(widget.distribution.id);
+    await context.read<DistributionViewModel>().getDistributionById(
+      widget.distribution.id,
+    );
     final updated = context.read<DistributionViewModel>().selectedDistribution;
     setState(() {
       _currentDistribution = updated ?? widget.distribution;
@@ -60,72 +69,162 @@ class _DistributionDetailScreenState extends State<DistributionDetailScreen> {
     });
   }
 
+  // --- دالة الطباعة الجديدة ---
+  Future<void> _printInvoice(PrinterSize printerSize) async {
+    final t = AppLocalizations.of(context)!;
+    final dist = _currentDistribution ?? widget.distribution;
+    final customerVm = context.read<CustomerViewModel>();
+    final authVm = context.read<AuthViewModel>();
+
+    setState(() => _isPrinting = true);
+
+    try {
+      // 1. جلب بيانات العميل الكاملة (للعنوان والهاتف)
+      await customerVm.getCustomerById(dist.customerId);
+      final customer = customerVm.selectedCustomer;
+
+      if (customer == null) {
+        throw Exception("Customer data not found");
+      }
+
+      // 2. اسم المستخدم الحالي
+      final createdBy =
+          authVm.user?.displayName ?? authVm.user?.email ?? 'User';
+
+      // 3. توليد ملف الـ PDF باستخدام الكلاس الجديد
+      final generator = ThermalInvoiceGenerator();
+      final filePath = await generator.generateDistributionInvoice(
+        customer: customer,
+        items: dist.items,
+        total: dist.totalAmount,
+        paid: dist.paidAmount,
+        previousBalance: 0.0, // يمكن تعديل هذا إذا كان لديك رصيد سابق مخزن
+        dateTime: dist.distributionDate,
+        createdBy: createdBy,
+        printerSize: printerSize,
+        notes: null, // يمكن تمرير الملاحظات إذا وجدت
+      );
+
+      // 4. فتح الملف
+      await OpenFile.open(filePath);
+    } catch (e) {
+      developer.log('Error printing invoice', error: e);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('${t.errorOccurred}: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isPrinting = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final dist = _currentDistribution ?? widget.distribution;
-    // Log the runtime type and hashCode to help diagnose unexpected values
-    developer.log('DistributionDetailScreen.build - dist runtimeType=${dist.runtimeType} hashCode=${dist.hashCode}',
-        name: 'DistributionDetailScreen');
+    developer.log(
+      'DistributionDetailScreen.build - dist runtimeType=${dist.runtimeType} hashCode=${dist.hashCode}',
+      name: 'DistributionDetailScreen',
+    );
     final t = AppLocalizations.of(context)!;
 
-    // Log only — accept subtypes like DistributionModel (common for local/remote models).
-    // We don't block rendering for subclasses.
-
     var card = Card(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Items', style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 8),
-                  ...dist.items.map((it) => ListTile(
-                        title: Text(it.productName),
-                        subtitle: Text('${it.quantity} x ${it.price.toStringAsFixed(2)}'),
-                        trailing: Text('ريال${it.subtotal.toStringAsFixed(2)}'),
-                      )),
-                  const Divider(),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(t.dashboardTotalSales, style: Theme.of(context).textTheme.titleMedium),
-                      Text('ريال${dist.totalAmount.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(t.outstandingLabel),
-                      Text('ريال${dist.pendingAmount.toStringAsFixed(2)}'),
-                    ],
-                  ),
-                ],
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(t.itemsLabel, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            ...dist.items.map(
+              (it) => ListTile(
+                title: Text(it.productName),
+                subtitle: Text(
+                  '${it.quantity} x ${it.price.toStringAsFixed(2)}',
+                ),
+                trailing: Text('ريال${it.subtotal.toStringAsFixed(2)}'),
               ),
             ),
-          );
+            const Divider(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  t.dashboardTotalSales,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                Text(
+                  'ريال${dist.totalAmount.toStringAsFixed(2)}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(t.outstandingLabel),
+                Text('ريال${dist.pendingAmount.toStringAsFixed(2)}'),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+
     return Scaffold(
       appBar: AppBar(
         title: Text('${t.distributionLabel} ${dist.customerName}'),
+        actions: [
+          // زر الطباعة في الأعلى
+          if (_isPrinting)
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              ),
+            )
+          else
+            PrintButton(
+              onPrint: (size, output, isReprint) async {
+                await _printInvoice(size);
+              },
+            ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text(dist.customerName, style: Theme.of(context).textTheme.headlineSmall),
+          Text(
+            dist.customerName,
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
           const SizedBox(height: 8),
-          // Safely format distribution date to avoid crashes if the
-          // underlying value is unexpected. Log errors for diagnosis.
-          Builder(builder: (ctx) {
-            String dateStr;
-            try {
-              final d = dist.distributionDate;
-              dateStr = '${d.day}/${d.month}/${d.year}';
-            } catch (e, st) {
-              developer.log('Failed to format distributionDate', name: 'DistributionDetailScreen', error: e, stackTrace: st);
-              dateStr = '-';
-            }
-            return Text(dateStr);
-          }),
+          Builder(
+            builder: (ctx) {
+              String dateStr;
+              try {
+                final d = dist.distributionDate;
+                dateStr = '${d.day}/${d.month}/${d.year}';
+              } catch (e, st) {
+                developer.log(
+                  'Failed to format distributionDate',
+                  name: 'DistributionDetailScreen',
+                  error: e,
+                  stackTrace: st,
+                );
+                dateStr = '-';
+              }
+              return Text(dateStr);
+            },
+          ),
           const SizedBox(height: 16),
           card,
           const SizedBox(height: 16),

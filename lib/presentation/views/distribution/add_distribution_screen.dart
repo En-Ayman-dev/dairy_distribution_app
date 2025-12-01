@@ -10,9 +10,9 @@ import 'dart:io';
 import 'package:image/image.dart' as img;
 
 // --- Imports: Core & Utils ---
-import '../../../core/utils/pdf_generator.dart';
 import '../../../core/utils/service_locator.dart';
 import '../../../core/services/thermal_printer_service.dart';
+import '../../../core/utils/thermal_invoice_generator.dart';
 import '../../../core/utils/ticket_generator.dart';
 import '../../../domain/entities/distribution.dart';
 import '../../../l10n/app_localizations.dart';
@@ -576,7 +576,7 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
 
     if (output == PrintOutput.pdf) {
       // (كود PDF القديم كما هو)
-      final pdfGen = PDFGenerator();
+      final thermalGen = ThermalInvoiceGenerator();
       final distribution =
           vm.selectedDistribution ??
           Distribution(
@@ -593,7 +593,7 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
           );
 
       try {
-        final path = await pdfGen.generateDistributionInvoice(
+        final path = await thermalGen.generateDistributionInvoice(
           customer: customer,
           items: distribution.items,
           total: distribution.totalAmount,

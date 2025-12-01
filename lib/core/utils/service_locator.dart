@@ -105,18 +105,20 @@ Future<void> setupServiceLocator() async {
   getIt.registerFactory(() => DistributionViewModel(getIt(), getIt()));
   
   // --- تحديث حقن SupplierViewModel ---
-  // الآن يتطلب PurchaseRepository لحساب المديونية
   getIt.registerFactory(() => SupplierViewModel(
     getIt<SupplierRepository>(),
-    getIt<PurchaseRepository>(), // التبعية الجديدة
+    getIt<PurchaseRepository>(),
     getIt<Uuid>(),
   ));
   
   getIt.registerFactory(() => PurchaseViewModel(getIt(), getIt()));
   
+  // --- تحديث حقن ReportViewModel (إضافة المستودعات الجديدة) ---
   getIt.registerFactory(() => ReportViewModel(
         getIt<DistributionRepository>(),
         getIt<CustomerRepository>(),
         getIt<ProductRepository>(),
+        getIt<PurchaseRepository>(), // التبعية الجديدة
+        getIt<SupplierRepository>(), // التبعية الجديدة
       ));
 }

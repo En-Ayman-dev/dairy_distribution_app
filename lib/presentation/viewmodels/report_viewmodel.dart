@@ -1,49 +1,57 @@
 import 'package:flutter/foundation.dart';
 import 'package:dartz/dartz.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/repositories/distribution_repository.dart';
 import '../../domain/repositories/customer_repository.dart';
 import '../../domain/repositories/product_repository.dart';
+import '../../domain/repositories/purchase_repository.dart';
+import '../../domain/repositories/supplier_repository.dart';
 import '../../core/utils/pdf_generator.dart';
 import '../../core/utils/excel_generator.dart';
-// --- الإضافات ---
 import '../../domain/entities/customer.dart';
 import '../../domain/entities/product.dart';
 import '../../domain/entities/distribution.dart';
-// --- نهاية الإضافات ---
+import '../../domain/entities/purchase.dart';
+import '../../domain/entities/supplier.dart';
+import '../../domain/entities/supplier_payment.dart';
 
-enum ReportViewState {
-  initial,
-  loading,
-  loaded,
-  error,
-  generating,
+// --- تعريف أعمدة التقرير ---
+class ReportColumn {
+  final String id;
+  final String labelKey;
+  bool isVisible;
+  final bool isNumeric;
+
+  ReportColumn({
+    required this.id,
+    required this.labelKey,
+    this.isVisible = true,
+    this.isNumeric = false,
+  });
 }
 
-enum ReportType {
-  sales,
-  inventory,
-  // customerStatement, <-- تم إزالته، أصبح جزءاً من تقرير المبيعات
-  outstanding,
-  // productWise, <-- تم إزالته، أصبح جزءاً من تقرير المخزون
-}
+enum ReportViewState { initial, loading, loaded, error, generating }
 
-// --- إضافة ---
-// نوع تقرير المبيعات بناءً على طلبك (تفصيلي / ملخص)
-enum SalesReportType {
-  summary,
-  detailed,
-}
-// --- نهاية الإضافة ---
+enum ReportType { sales, inventory, outstanding, purchases }
+
+enum SalesReportType { summary, detailed }
+
+// --- نوع تقرير المشتريات الجديد ---
+enum PurchaseReportType { detailedItems, statement }
 
 class ReportViewModel extends ChangeNotifier {
   final DistributionRepository _distributionRepository;
   final CustomerRepository _customerRepository;
   final ProductRepository _productRepository;
+  final PurchaseRepository _purchaseRepository;
+  final SupplierRepository _supplierRepository;
 
   ReportViewModel(
     this._distributionRepository,
     this._customerRepository,
     this._productRepository,
+    this._purchaseRepository,
+    this._supplierRepository,
   );
 
   ReportViewState _state = ReportViewState.initial;
@@ -52,11 +60,33 @@ class ReportViewModel extends ChangeNotifier {
   DateTime _startDate = DateTime.now().subtract(const Duration(days: 30));
   DateTime _endDate = DateTime.now();
 
-  // --- متغيرات الفلاتر الجديدة ---
+  // --- الفلاتر ---
   Customer? _selectedCustomer;
   List<Product> _selectedProducts = [];
   SalesReportType _salesReportType = SalesReportType.summary;
-  // --- نهاية متغيرات الفلاتر ---
+  
+  // --- فلاتر تقارير المشتريات ---
+  Supplier? _selectedSupplier;
+  PurchaseReportType _purchaseReportType = PurchaseReportType.statement;
+
+  // --- بيانات المشتريات ---
+  List<Purchase> _purchases = [];
+  List<SupplierPayment> _payments = [];
+
+  // --- تعريف الأعمدة ---
+  final List<ReportColumn> _purchaseReportColumns = [
+    ReportColumn(id: 'invoice_num', labelKey: 'colInvoiceNum', isVisible: true),
+    ReportColumn(id: 'date', labelKey: 'colDate', isVisible: true),
+    ReportColumn(id: 'supplier', labelKey: 'colSupplier', isVisible: true),
+    ReportColumn(id: 'product', labelKey: 'colProduct', isVisible: true),
+    ReportColumn(id: 'qty', labelKey: 'colQty', isVisible: true, isNumeric: true),
+    ReportColumn(id: 'free_qty', labelKey: 'colFreeQty', isVisible: true, isNumeric: true),
+    ReportColumn(id: 'price', labelKey: 'colPrice', isVisible: true, isNumeric: true),
+    ReportColumn(id: 'returned_qty', labelKey: 'colReturnedQty', isVisible: true, isNumeric: true),
+    ReportColumn(id: 'debit', labelKey: 'colDebit', isVisible: true, isNumeric: true),
+    ReportColumn(id: 'credit', labelKey: 'colCredit', isVisible: true, isNumeric: true),
+    ReportColumn(id: 'balance', labelKey: 'colBalance', isVisible: true, isNumeric: true),
+  ];
 
   // Getters
   ReportViewState get state => _state;
@@ -65,20 +95,22 @@ class ReportViewModel extends ChangeNotifier {
   DateTime get startDate => _startDate;
   DateTime get endDate => _endDate;
 
-  // --- Getters للفلاتر ---
   Customer? get selectedCustomer => _selectedCustomer;
   List<Product> get selectedProducts => _selectedProducts;
   SalesReportType get salesReportType => _salesReportType;
-  // --- نهاية Getters للفلاتر ---
 
-  // Set date range
+  Supplier? get selectedSupplier => _selectedSupplier;
+  PurchaseReportType get purchaseReportType => _purchaseReportType;
+  List<Purchase> get purchases => _purchases;
+  List<ReportColumn> get purchaseColumns => _purchaseReportColumns;
+
+  // Setters
   void setDateRange(DateTime start, DateTime end) {
     _startDate = start;
     _endDate = end;
     notifyListeners();
   }
 
-  // --- دوال Setters للفلاتر (لتحديث الواجهة) ---
   void setSelectedCustomer(Customer? customer) {
     _selectedCustomer = customer;
     notifyListeners();
@@ -93,21 +125,122 @@ class ReportViewModel extends ChangeNotifier {
     _salesReportType = type;
     notifyListeners();
   }
-  // --- نهاية دوال Setters ---
 
-  // Generate sales report (*** تم تعديله بالكامل ***)
+  void setSelectedSupplier(Supplier? supplier) {
+    _selectedSupplier = supplier;
+    notifyListeners();
+  }
+
+  void setPurchaseReportType(PurchaseReportType type) {
+    _purchaseReportType = type;
+    notifyListeners();
+  }
+
+  // --- إدارة الأعمدة ---
+  void toggleColumnVisibility(String columnId, bool isVisible) {
+    final index = _purchaseReportColumns.indexWhere((col) => col.id == columnId);
+    if (index != -1) {
+      _purchaseReportColumns[index].isVisible = isVisible;
+      notifyListeners();
+    }
+  }
+
+  Future<void> saveColumnPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    final visibleColumns = _purchaseReportColumns.where((col) => col.isVisible).map((col) => col.id).toList();
+    await prefs.setStringList('purchase_report_cols', visibleColumns);
+  }
+
+  Future<void> _loadColumnPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedCols = prefs.getStringList('purchase_report_cols');
+    if (savedCols != null) {
+      for (var col in _purchaseReportColumns) {
+        col.isVisible = savedCols.contains(col.id);
+      }
+    }
+  }
+
+  // --- الدالة المفقودة: تحميل بيانات تقرير المشتريات للعرض ---
+  Future<void> loadPurchasesReportData() async {
+    _setState(ReportViewState.loading);
+    try {
+      await _loadColumnPreferences();
+      final resultStream = _purchaseRepository.watchPurchases();
+      final result = await resultStream.first; 
+
+      result.fold(
+        (failure) {
+          _errorMessage = failure.message;
+          _setState(ReportViewState.error);
+        },
+        (data) {
+          _purchases = data;
+          _setState(ReportViewState.loaded);
+        },
+      );
+    } catch (e) {
+      _errorMessage = 'Failed to load purchases report data';
+      _setState(ReportViewState.error);
+    }
+  }
+
+  // --- توليد تقرير المشتريات (للتصدير) ---
+  Future<void> generatePurchasesReport() async {
+    _setState(ReportViewState.loading);
+    try {
+      await _loadColumnPreferences();
+
+      final purchasesResultStream = _purchaseRepository.watchPurchases();
+      final allPurchases = await purchasesResultStream.first.then((either) => either.getOrElse(() => []));
+      
+      // فلترة المشتريات
+      _purchases = allPurchases.where((p) {
+        final dateOk = p.createdAt.isAfter(_startDate.subtract(const Duration(days: 1))) && 
+                       p.createdAt.isBefore(_endDate.add(const Duration(days: 1)));
+        final supplierOk = _selectedSupplier == null || p.supplierId == _selectedSupplier!.id;
+        return dateOk && supplierOk;
+      }).toList();
+
+      // جلب الدفعات إذا كان كشف حساب
+      _payments = [];
+      if (_purchaseReportType == PurchaseReportType.statement) {
+        if (_selectedSupplier != null) {
+          final paymentsResult = await _supplierRepository.getSupplierPayments(_selectedSupplier!.id);
+          _payments = paymentsResult.getOrElse(() => []).where((p) {
+             return p.paymentDate.isAfter(_startDate.subtract(const Duration(days: 1))) && 
+                    p.paymentDate.isBefore(_endDate.add(const Duration(days: 1)));
+          }).toList();
+        }
+      }
+
+      _reportData = {
+        'type': 'purchases',
+        'sub_type': _purchaseReportType,
+        'start_date': _startDate,
+        'end_date': _endDate,
+        'supplier': _selectedSupplier,
+        'purchases': _purchases,
+        'payments': _payments,
+        'columns': _purchaseReportColumns.where((c) => c.isVisible).map((c) => c.id).toList(),
+      };
+
+      _setState(ReportViewState.loaded);
+    } catch (e) {
+      _errorMessage = 'Failed to generate purchases report';
+      _setState(ReportViewState.error);
+    }
+  }
+
+  // --- التقارير الأخرى ---
+  
   Future<void> generateSalesReport() async {
     _setState(ReportViewState.loading);
-
     try {
-      // 1. جلب الحركات المفصلة بناءً على الفلاتر
-      // (سنقوم بإضافة getFilteredDistributions إلى الـ Repository في الخطوة التالية)
-      final distributionsResult =
-          await _distributionRepository.getFilteredDistributions(
+      final distributionsResult = await _distributionRepository.getFilteredDistributions(
         startDate: _startDate,
         endDate: _endDate,
         customerId: _selectedCustomer?.id,
-        // تحويل قائمة المنتجات إلى قائمة IDs
         productIds: _selectedProducts.map((p) => p.id).toList(),
       );
 
@@ -117,26 +250,20 @@ class ReportViewModel extends ChangeNotifier {
           _setState(ReportViewState.error);
         },
         (distributions) {
-          // 2. بناء بيانات التقرير بناءً على النوع (ملخص أو تفصيلي)
           Map<String, dynamic> stats = {};
-
-          // إذا كان التقرير "ملخص"، قم بحساب الإحصائيات
           if (_salesReportType == SalesReportType.summary) {
             stats = _calculateDistributionStats(distributions);
-          }
-          // إذا كان "تفصيلي"، سنمرر قائمة الحركات كاملة
-          else {
+          } else {
             stats['distributions'] = distributions;
           }
-
           _reportData = {
             'type': 'sales',
-            'report_type': _salesReportType, // ملخص أم تفصيلي
+            'report_type': _salesReportType,
             'start_date': _startDate,
             'end_date': _endDate,
-            'customer': _selectedCustomer, // العميل المختار (قد يكون null)
-            'products': _selectedProducts, // المنتجات المختارة (قد تكون فارغة)
-            'stats': stats, // يحتوي على الإحصائيات أو قائمة الحركات
+            'customer': _selectedCustomer,
+            'products': _selectedProducts,
+            'stats': stats,
           };
           _setState(ReportViewState.loaded);
         },
@@ -147,19 +274,15 @@ class ReportViewModel extends ChangeNotifier {
     }
   }
 
-  // دالة مساعدة لحساب الإحصائيات
-  Map<String, dynamic> _calculateDistributionStats(
-      List<Distribution> distributions) {
+  Map<String, dynamic> _calculateDistributionStats(List<Distribution> distributions) {
     double totalSales = 0;
     double totalPaid = 0;
     double totalPending = 0;
-
     for (var dist in distributions) {
       totalSales += dist.totalAmount;
       totalPaid += dist.paidAmount;
       totalPending += dist.pendingAmount;
     }
-
     return {
       'total_sales': totalSales,
       'total_paid': totalPaid,
@@ -169,39 +292,29 @@ class ReportViewModel extends ChangeNotifier {
     };
   }
 
-  // Generate inventory report (*** تم تعديله ***)
   Future<void> generateInventoryReport() async {
     _setState(ReportViewState.loading);
-
     try {
       final productsResult = await _productRepository.getAllProducts();
-
       productsResult.fold(
         (failure) {
           _errorMessage = failure.message;
           _setState(ReportViewState.error);
         },
         (products) {
-          // *** فلترة المنتجات بناءً على اختيار المستخدم ***
           final filteredProducts = _selectedProducts.isEmpty
-              ? products // إذا لم يختر شيئاً، اعرض الكل
-              : products
-                  .where((p) =>
-                      _selectedProducts.any((selected) => selected.id == p.id))
-                  .toList();
-          // *** نهاية الفلترة ***
+              ? products
+              : products.where((p) => _selectedProducts.any((selected) => selected.id == p.id)).toList();
 
           double totalValue = 0;
           int lowStockCount = 0;
-
           for (var product in filteredProducts) {
             totalValue += product.stock * product.price;
             if (product.isLowStock) lowStockCount++;
           }
-
           _reportData = {
             'type': 'inventory',
-            'products': filteredProducts, // استخدام القائمة المفلتزة
+            'products': filteredProducts,
             'total_products': filteredProducts.length,
             'total_value': totalValue,
             'low_stock_count': lowStockCount,
@@ -215,17 +328,11 @@ class ReportViewModel extends ChangeNotifier {
     }
   }
 
-  // (*** تم حذف generateCustomerStatement - أصبح جزءاً من generateSalesReport ***)
-
-  // Generate outstanding report (*** تم تعديله ***)
   Future<void> generateOutstandingReport() async {
     _setState(ReportViewState.loading);
-
     try {
-      // إذا اختار المستخدم عميلاً محدداً، اجلب بياناته فقط
       if (_selectedCustomer != null) {
-        final customerResult =
-            await _customerRepository.getCustomerById(_selectedCustomer!.id);
+        final customerResult = await _customerRepository.getCustomerById(_selectedCustomer!.id);
         customerResult.fold(
           (failure) {
             _errorMessage = failure.message;
@@ -234,7 +341,7 @@ class ReportViewModel extends ChangeNotifier {
           (customer) {
             _reportData = {
               'type': 'outstanding',
-              'customers': [customer], // قائمة بعميل واحد
+              'customers': [customer],
               'total_outstanding': customer.balance,
               'customer_count': 1,
             };
@@ -242,7 +349,6 @@ class ReportViewModel extends ChangeNotifier {
           },
         );
       } else {
-        // إذا لم يختر عميلاً، قم بتطبيق المنطق القديم (جلب كل العملاء)
         final customersResult = await _customerRepository.getAllCustomers();
         customersResult.fold(
           (failure) {
@@ -250,16 +356,9 @@ class ReportViewModel extends ChangeNotifier {
             _setState(ReportViewState.error);
           },
           (customers) {
-            final outstandingCustomers = customers
-                .where((c) => c.balance > 0)
-                .toList()
+            final outstandingCustomers = customers.where((c) => c.balance > 0).toList()
               ..sort((a, b) => b.balance.compareTo(a.balance));
-
-            final totalOutstanding = outstandingCustomers.fold(
-              0.0,
-              (sum, customer) => sum + customer.balance,
-            );
-
+            final totalOutstanding = outstandingCustomers.fold(0.0, (sum, customer) => sum + customer.balance);
             _reportData = {
               'type': 'outstanding',
               'customers': outstandingCustomers,
@@ -276,14 +375,11 @@ class ReportViewModel extends ChangeNotifier {
     }
   }
 
-  // Export to PDF (*** تم تعديله ***)
   Future<String?> exportToPDF(ReportType reportType) async {
     _setState(ReportViewState.generating);
-
     try {
       final pdfGenerator = PDFGenerator();
       String? filePath;
-
       switch (reportType) {
         case ReportType.sales:
           filePath = await pdfGenerator.generateSalesReport(_reportData);
@@ -291,12 +387,13 @@ class ReportViewModel extends ChangeNotifier {
         case ReportType.inventory:
           filePath = await pdfGenerator.generateInventoryReport(_reportData);
           break;
-        // (case ReportType.customerStatement: <-- تم الحذف)
         case ReportType.outstanding:
           filePath = await pdfGenerator.generateOutstandingReport(_reportData);
           break;
-        }
-
+        case ReportType.purchases:
+          filePath = await pdfGenerator.generatePurchasesReport(_reportData);
+          break;
+      }
       _setState(ReportViewState.loaded);
       return filePath;
     } catch (e) {
@@ -306,14 +403,11 @@ class ReportViewModel extends ChangeNotifier {
     }
   }
 
-  // Export to Excel (*** تم تعديله ***)
   Future<String?> exportToExcel(ReportType reportType) async {
     _setState(ReportViewState.generating);
-
     try {
       final excelGenerator = ExcelGenerator();
       String? filePath;
-
       switch (reportType) {
         case ReportType.sales:
           filePath = await excelGenerator.generateSalesReport(_reportData);
@@ -321,12 +415,14 @@ class ReportViewModel extends ChangeNotifier {
         case ReportType.inventory:
           filePath = await excelGenerator.generateInventoryReport(_reportData);
           break;
-        // (case ReportType.customerStatement: <-- تم الحذف)
         case ReportType.outstanding:
           filePath = await excelGenerator.generateOutstandingReport(_reportData);
           break;
-        }
-
+        case ReportType.purchases:
+          // سيتم إضافة هذا الجزء في الخطوة التالية عند تحديث ExcelGenerator
+          filePath = await excelGenerator.generatePurchasesReport(_reportData);
+          break;
+      }
       _setState(ReportViewState.loaded);
       return filePath;
     } catch (e) {
@@ -352,12 +448,8 @@ class ReportViewModel extends ChangeNotifier {
   }
 }
 
-// Extension method for Either
 extension EitherX<L, R> on Either<L, R> {
   bool isLeft() => fold((_) => true, (_) => false);
   bool isRight() => fold((_) => false, (_) => true);
-
-  R getOrElse(R Function() orElse) {
-    return fold((_) => orElse(), (r) => r);
-  }
+  R getOrElse(R Function() orElse) => fold((_) => orElse(), (r) => r);
 }

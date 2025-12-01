@@ -768,4 +768,109 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get freeLabel => 'Free';
+
+  @override
+  String get purchasesReportTitle => 'Purchases Report';
+
+  @override
+  String get purchasesReportSubtitle => 'Detailed financial purchase report';
+
+  @override
+  String get customizeReportButton => 'Customize Report';
+
+  @override
+  String get selectColumnsTitle => 'Select Report Columns';
+
+  @override
+  String get saveAsDefaultConfig => 'Save as default';
+
+  @override
+  String get colSupplier => 'Supplier';
+
+  @override
+  String get colDate => 'Date';
+
+  @override
+  String get colItemsCount => 'Items Count';
+
+  @override
+  String get colTotalAmount => 'Total Amount';
+
+  @override
+  String get colDiscount => 'Discount';
+
+  @override
+  String get colNetTotal => 'Net Total';
+
+  @override
+  String get colPaid => 'Paid';
+
+  @override
+  String get colRemaining => 'Remaining';
+
+  @override
+  String get colStatus => 'Status';
+
+  @override
+  String get reportGeneratedSuccess => 'Report generated successfully';
+
+  @override
+  String get totalSummaryLabel => 'Grand Total';
+
+  @override
+  String get generateViewButton => 'View Report';
+
+  @override
+  String get reportTypeTitle => 'Report Type';
+
+  @override
+  String get reportTypeDetailedItems => 'Detailed (Items Movement)';
+
+  @override
+  String get reportTypeStatement => 'Summary (Statement of Account)';
+
+  @override
+  String get colInvoiceNum => 'Invoice #';
+
+  @override
+  String get colProduct => 'Product';
+
+  @override
+  String get colQty => 'Qty';
+
+  @override
+  String get colFreeQty => 'Free';
+
+  @override
+  String get colPrice => 'Price';
+
+  @override
+  String get colReturnedQty => 'Returned Qty';
+
+  @override
+  String get colReturnedVal => 'Returned Value';
+
+  @override
+  String get colDebit => 'Invoice Amount';
+
+  @override
+  String get colCredit => 'Paid';
+
+  @override
+  String get colBalance => 'Balance';
+
+  @override
+  String get supplierHeaderName => 'Supplier';
+
+  @override
+  String get supplierHeaderPhone => 'Phone';
+
+  @override
+  String get supplierHeaderAddress => 'Address';
+
+  @override
+  String get grandTotalPaid => 'Total Paid';
+
+  @override
+  String get grandTotalRemaining => 'Total Remaining';
 }

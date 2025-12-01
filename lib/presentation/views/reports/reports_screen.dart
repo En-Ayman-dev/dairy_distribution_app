@@ -1,15 +1,14 @@
-
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../viewmodels/report_viewmodel.dart';
-import '../../viewmodels/customer_viewmodel.dart'; // <-- إضافة
-import '../../viewmodels/product_viewmodel.dart'; // <-- إضافة
-import '../../../domain/entities/customer.dart'; // <-- إضافة
-import '../../../domain/entities/product.dart'; // <-- إضافة
+import '../../viewmodels/customer_viewmodel.dart'; 
+import '../../viewmodels/product_viewmodel.dart'; 
+import '../../../domain/entities/customer.dart'; 
+import '../../../domain/entities/product.dart'; 
 import '../../../l10n/app_localizations.dart';
 import 'package:open_file/open_file.dart';
 import 'package:share_plus/share_plus.dart';
+import 'purchase_report_screen.dart'; // استيراد شاشة تقرير المشتريات الجديدة
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -25,14 +24,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   void initState() {
     super.initState();
-    // جلب البيانات اللازمة للفلاتر عند فتح الشاشة
-    // نستخدم addPostFrameCallback لضمان أن الـ context متاح
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // التأكد من أن الـ ViewModels جاهزة قبل جلب البيانات
       if (mounted) {
         context.read<CustomerViewModel>().loadCustomers();
         context.read<ProductViewModel>().loadProducts();
-        // ضبط التاريخ المبدئي في الـ ViewModel
         context.read<ReportViewModel>().setDateRange(_startDate, _endDate);
       }
     });
@@ -40,14 +35,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // استخدام Consumer3 للاستماع إلى جميع الـ ViewModels التي نحتاجها
     return Scaffold(
       appBar: AppBar(
         title: Text(AppLocalizations.of(context)!.reportsTitle),
       ),
       body: Consumer3<ReportViewModel, CustomerViewModel, ProductViewModel>(
         builder: (context, reportVM, customerVM, productVM, child) {
-          // جلب القوائم من الـ ViewModels
           final List<Customer> customers = customerVM.customers;
           final List<Product> products = productVM.products;
 
@@ -58,6 +51,35 @@ class _ReportsScreenState extends State<ReportsScreen> {
               _buildDateRangeCard(context, reportVM),
               const SizedBox(height: 16),
 
+              // --- (جديد) Purchases Report Card ---
+              // بطاقة خاصة لتقرير المشتريات التفاعلي الجديد
+              Card(
+                margin: const EdgeInsets.only(bottom: 16),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.all(16),
+                  leading: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.shopping_bag, color: Colors.purple, size: 28),
+                  ),
+                  title: Text(
+                    AppLocalizations.of(context)!.purchasesReportTitle,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(AppLocalizations.of(context)!.purchasesReportSubtitle),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const PurchaseReportScreen()),
+                    );
+                  },
+                ),
+              ),
+
               // Sales Report Filters (Card 2)
               _buildReportExpansionTile(
                 context,
@@ -66,14 +88,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 icon: Icons.trending_up,
                 color: Colors.green,
                 onGenerate: () async {
-                  // المنطق الذي كان موجوداً سابقاً
-                  // يتم استدعاؤه الآن *بعد* اختيار الفلاتر
                   final vm = context.read<ReportViewModel>();
                   await vm.generateSalesReport();
                   if (!mounted) return;
                   _showReportActions(ReportType.sales);
                 },
-                // الفلاتر المخصصة لتقرير المبيعات
                 filterWidgets: [
                   _buildSalesReportTypeSelector(context, reportVM),
                   _buildCustomerSelector(context, reportVM, customers),
@@ -94,7 +113,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   if (!mounted) return;
                   _showReportActions(ReportType.inventory);
                 },
-                // الفلاتر المخصصة لتقرير المخزون
                 filterWidgets: [
                   _buildProductMultiSelect(context, reportVM, products),
                 ],
@@ -104,8 +122,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               _buildReportExpansionTile(
                 context,
                 title: AppLocalizations.of(context)!.outstandingReportTitle,
-                subtitle:
-                    AppLocalizations.of(context)!.outstandingReportSubtitle,
+                subtitle: AppLocalizations.of(context)!.outstandingReportSubtitle,
                 icon: Icons.account_balance_wallet,
                 color: Colors.orange,
                 onGenerate: () async {
@@ -114,7 +131,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   if (!mounted) return;
                   _showReportActions(ReportType.outstanding);
                 },
-                // الفلاتر المخصصة لتقرير الأرصدة
                 filterWidgets: [
                   _buildCustomerSelector(context, reportVM, customers),
                 ],
@@ -168,7 +184,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  // (Cards 2, 3, 4) - الهيكل الرئيسي لـ ExpansionTile
+  // الهيكل الرئيسي لـ ExpansionTile
   Widget _buildReportExpansionTile(
     BuildContext context, {
     required String title,
@@ -178,9 +194,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
     required List<Widget> filterWidgets,
     required VoidCallback onGenerate,
   }) {
-    // هذا هو الـ consumer الذي سيعرض مؤشر التحميل
-    // سيتم إضافته لاحقاً في ReportViewModel
-    final _ = context.watch<ReportViewModel>();
+    // ignore: unused_local_variable
+    final _ = context.watch<ReportViewModel>(); // للاستماع للتغييرات
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -196,7 +211,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(subtitle),
         children: [
-          // هذا هو محتوى الفلاتر الذي يتم تمريره
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Column(
@@ -204,21 +218,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
               children: [
                 ...filterWidgets,
                 const SizedBox(height: 16),
-                // زر "إنشاء التقرير"
                 ElevatedButton.icon(
                   onPressed: onGenerate,
-                  // (vm.state == ReportState.loading) // سيتم تفعيل هذا لاحقاً
-                  //     ? null
-                  //     : onGenerate,
                   icon: const Icon(Icons.picture_as_pdf),
-                  label: Text(
-                    AppLocalizations.of(context)!.generateReport,
-                  ),
-                  // child: (vm.state == ReportState.loading) // وهذا أيضاً
-                  //     ? const CircularProgressIndicator()
-                  //     : Text(
-                  //         AppLocalizations.of(context)!.generateReport,
-                  //       ),
+                  label: Text(AppLocalizations.of(context)!.generateReport),
                 ),
               ],
             ),
@@ -230,59 +233,45 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   // --- ويدجتس الفلاتر ---
 
-  // فلتر: نوع تقرير المبيعات (تفصيلي / ملخص)
- // ... (داخل ملف reports_screen.dart) ...
-
-  // فلتر: نوع تقرير المبيعات (تفصيلي / ملخص)
-  Widget _buildSalesReportTypeSelector(
-      BuildContext context, ReportViewModel vm) {
-    
-    // (*** تم تعديل هذه الدالة بالكامل ***)
-
-    return DropdownButtonFormField<SalesReportType>( // <-- 1. تم تغيير النوع من String
-      initialValue: vm.salesReportType, // <-- 2. أصبح القيمة من الـ ViewModel
+  Widget _buildSalesReportTypeSelector(BuildContext context, ReportViewModel vm) {
+    return DropdownButtonFormField<SalesReportType>(
+      value: vm.salesReportType,
       decoration: InputDecoration(
         labelText: AppLocalizations.of(context)!.reportType,
         border: const OutlineInputBorder(),
       ),
       items: [
         DropdownMenuItem(
-          value: SalesReportType.summary, // <-- 3. تم تغيير القيمة إلى enum
+          value: SalesReportType.summary,
           child: Text(AppLocalizations.of(context)!.reportTypeSummary),
         ),
         DropdownMenuItem(
-          value: SalesReportType.detailed, // <-- 4. تم تغيير القيمة إلى enum
+          value: SalesReportType.detailed,
           child: Text(AppLocalizations.of(context)!.reportTypeDetailed),
         ),
       ],
       onChanged: (value) {
-        // 5. الآن 'value' هو من نوع SalesReportType (أو null)
         if (value != null) {
-          vm.setSalesReportType(value); // <-- أصبح الكود صحيحاً الآن
+          vm.setSalesReportType(value);
         }
       },
     );
   }
 
-
-  // فلتر: اختيار عميل واحد
-  Widget _buildCustomerSelector(
-      BuildContext context, ReportViewModel vm, List<Customer> customers) {
-    // سنقوم بإضافة selectedCustomer إلى الـ ViewModel لاحقاً
+  Widget _buildCustomerSelector(BuildContext context, ReportViewModel vm, List<Customer> customers) {
     final Customer? selectedCustomer = vm.selectedCustomer;
 
     return Padding(
       padding: const EdgeInsets.only(top: 8.0),
       child: DropdownButtonFormField<Customer?>(
-        initialValue: selectedCustomer,
+        value: selectedCustomer,
         decoration: InputDecoration(
           labelText: AppLocalizations.of(context)!.selectCustomer,
           border: const OutlineInputBorder(),
         ),
-        // إضافة خيار "كل العملاء" في البداية
         items: [
           DropdownMenuItem<Customer?>(
-            value: null, // القيمة null تمثل "الكل"
+            value: null,
             child: Text(AppLocalizations.of(context)!.allCustomers),
           ),
           ...customers.map((customer) {
@@ -293,16 +282,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
           }),
         ],
         onChanged: (customer) {
-          vm.setSelectedCustomer(customer); // سيتم تفعيل هذا لاحقاً
+          vm.setSelectedCustomer(customer);
         },
       ),
     );
   }
 
-  // فلتر: اختيار عدة منتجات
-  Widget _buildProductMultiSelect(
-      BuildContext context, ReportViewModel vm, List<Product> products) {
-    // سنقوم بإضافة selectedProducts إلى الـ ViewModel لاحقاً
+  Widget _buildProductMultiSelect(BuildContext context, ReportViewModel vm, List<Product> products) {
     final List<Product> selectedProducts = vm.selectedProducts;
 
     return Padding(
@@ -312,11 +298,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
         label: Text(
           selectedProducts.isEmpty
               ? AppLocalizations.of(context)!.selectProducts
-              : AppLocalizations.of(context)!
-                  .productsSelected(selectedProducts.length),
+              : AppLocalizations.of(context)!.productsSelected(selectedProducts.length),
         ),
         onPressed: () {
-          // إظهار نافذة لاختيار المنتجات
           _showProductMultiSelectDialog(context, vm, products);
         },
       ),
@@ -342,20 +326,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
           _endDate = picked;
         }
       });
-      // تحديث الـ ViewModel بالتاريخ الجديد
       vm.setDateRange(_startDate, _endDate);
     }
   }
 
-  // نافذة اختيار المنتجات المتعددة
-  void _showProductMultiSelectDialog(
-      BuildContext context, ReportViewModel vm, List<Product> allProducts) {
-    // هذه الدالة تحتاج إلى StatefulBuilder لأننا سنقوم بتحديث
-    // حالة الـ Checkboxes داخل النافذة نفسها
+  void _showProductMultiSelectDialog(BuildContext context, ReportViewModel vm, List<Product> allProducts) {
     showDialog(
       context: context,
       builder: (dialogContext) {
-        // قائمة مؤقتة لتخزين الاختيارات قبل الحفظ
         final List<Product> tempSelected = List.from(vm.selectedProducts);
 
         return StatefulBuilder(
@@ -392,7 +370,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    vm.setSelectedProducts(tempSelected); // سيتم تفعيل هذا لاحقاً
+                    vm.setSelectedProducts(tempSelected);
                     Navigator.pop(dialogContext);
                   },
                   child: Text(AppLocalizations.of(context)!.confirm),
@@ -405,7 +383,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  // (دوال BottomSheet والحوار لم تتغير)
   void _showReportActions(ReportType reportType) {
     final parentContext = context;
     showModalBottomSheet(

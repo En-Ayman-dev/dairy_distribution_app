@@ -7,12 +7,12 @@ import 'dart:developer' as developer;
 import 'package:provider/provider.dart';
 import '../../../core/utils/service_locator.dart';
 // --- تم حذف استيرادات LocalDataSource ---
+import '../../../core/utils/thermal_invoice_generator.dart';
 import '../../viewmodels/distribution_viewmodel.dart';
 // --- إضافة استيراد المستودع للوصول لبيانات العميل أثناء الطباعة ---
 import '../../../domain/repositories/customer_repository.dart';
 import '../../../domain/entities/distribution.dart';
 import '../../../domain/entities/distribution_item.dart';
-import '../../../core/utils/pdf_generator.dart';
 import '../../widgets/print_button.dart';
 import 'dart:typed_data';
 import 'dart:io';
@@ -405,8 +405,8 @@ class _DistributionListScreenState extends State<DistributionListScreen> {
       );
 
       if (output == PrintOutput.pdf) {
-        final pdfGen = PDFGenerator();
-        final path = await pdfGen.generateDistributionInvoice(
+        final thermalGen = ThermalInvoiceGenerator();
+        final path = await thermalGen.generateDistributionInvoice(
           customer: customer,
           items: distribution.items,
           total: distribution.totalAmount,

@@ -768,4 +768,109 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get freeLabel => 'مجاني';
+
+  @override
+  String get purchasesReportTitle => 'تقرير المشتريات';
+
+  @override
+  String get purchasesReportSubtitle => 'تقرير تفصيلي ومالي للمشتريات';
+
+  @override
+  String get customizeReportButton => 'تخصيص التقرير';
+
+  @override
+  String get selectColumnsTitle => 'اختر أعمدة التقرير';
+
+  @override
+  String get saveAsDefaultConfig => 'حفظ كإعداد افتراضي';
+
+  @override
+  String get colSupplier => 'المورد';
+
+  @override
+  String get colDate => 'التاريخ';
+
+  @override
+  String get colItemsCount => 'عدد الأصناف';
+
+  @override
+  String get colTotalAmount => 'الإجمالي';
+
+  @override
+  String get colDiscount => 'الخصم';
+
+  @override
+  String get colNetTotal => 'الصافي';
+
+  @override
+  String get colPaid => 'المدفوع';
+
+  @override
+  String get colRemaining => 'المتبقي';
+
+  @override
+  String get colStatus => 'الحالة';
+
+  @override
+  String get reportGeneratedSuccess => 'تم إنشاء التقرير بنجاح';
+
+  @override
+  String get totalSummaryLabel => 'الإجمالي الكلي';
+
+  @override
+  String get generateViewButton => 'عرض التقرير';
+
+  @override
+  String get reportTypeTitle => 'نوع التقرير';
+
+  @override
+  String get reportTypeDetailedItems => 'تفصيلي (حركة الأصناف)';
+
+  @override
+  String get reportTypeStatement => 'كلي (كشف حساب مالي)';
+
+  @override
+  String get colInvoiceNum => 'رقم الفاتورة';
+
+  @override
+  String get colProduct => 'المنتج';
+
+  @override
+  String get colQty => 'الكمية';
+
+  @override
+  String get colFreeQty => 'مجاني';
+
+  @override
+  String get colPrice => 'السعر';
+
+  @override
+  String get colReturnedQty => 'كمية مرتجعة';
+
+  @override
+  String get colReturnedVal => 'قيمة مرتجعة';
+
+  @override
+  String get colDebit => 'مبلغ الفاتورة';
+
+  @override
+  String get colCredit => 'المسدد';
+
+  @override
+  String get colBalance => 'الرصيد المتبقي';
+
+  @override
+  String get supplierHeaderName => 'المورد';
+
+  @override
+  String get supplierHeaderPhone => 'الهاتف';
+
+  @override
+  String get supplierHeaderAddress => 'العنوان';
+
+  @override
+  String get grandTotalPaid => 'إجمالي المسدد';
+
+  @override
+  String get grandTotalRemaining => 'إجمالي المتبقي';
 }
