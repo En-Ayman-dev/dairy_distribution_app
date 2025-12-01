@@ -26,7 +26,7 @@ class PurchaseHeaderForm extends StatelessWidget {
         child: Column(
           children: [
             DropdownButtonFormField<String>(
-              value: selectedSupplierId,
+              initialValue: selectedSupplierId,
               items: suppliers
                   .map((s) => DropdownMenuItem(value: s.id, child: Text(s.name)))
                   .toList(),

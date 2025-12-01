@@ -47,7 +47,7 @@ class PurchaseItemInput extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: selectedProductId,
+              initialValue: selectedProductId,
               items: products
                   .map(
                     (p) => DropdownMenuItem(value: p.id, child: Text(p.name)),

@@ -63,7 +63,7 @@ class ReceiptWidget extends StatelessWidget {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.black54,
+                        color: Colors.black87,
                       ),
                     ),
                   ],

@@ -174,7 +174,7 @@ class _InvoicesTabState extends State<InvoicesTab> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        '${purchase.totalAmount.toStringAsFixed(2)}', // العملة يمكن إضافتها لاحقاً أو كجزء من النص
+                        purchase.totalAmount.toStringAsFixed(2), // العملة يمكن إضافتها لاحقاً أو كجزء من النص
                         style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green, fontSize: 14),
                       ),
                       const Icon(Icons.keyboard_arrow_down, size: 16),

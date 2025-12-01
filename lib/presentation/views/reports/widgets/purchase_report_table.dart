@@ -66,7 +66,7 @@ class PurchaseReportTable extends StatelessWidget {
         final rowColor = isEven ? Colors.white : Colors.grey[50];
 
         return DataRow(
-          color: MaterialStateProperty.all(rowColor),
+          color: WidgetStateProperty.all(rowColor),
           cells: visibleCols.map((col) {
             String cellValue = '';
             bool isBold = false;
@@ -127,7 +127,7 @@ class PurchaseReportTable extends StatelessWidget {
 
           rows.add(
             DataRow(
-              color: MaterialStateProperty.all(rowColor),
+              color: WidgetStateProperty.all(rowColor),
               cells: visibleCols.map((col) {
                 String cellValue = '';
                 switch (col.id) {
@@ -187,7 +187,7 @@ class PurchaseReportTable extends StatelessWidget {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
-          headingRowColor: MaterialStateProperty.all(Colors.blue[50]),
+          headingRowColor: WidgetStateProperty.all(Colors.blue[50]),
           columnSpacing: 20,
           horizontalMargin: 12,
           columns: visibleColumns.map((col) {

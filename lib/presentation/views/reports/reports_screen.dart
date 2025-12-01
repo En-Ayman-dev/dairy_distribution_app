@@ -235,7 +235,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   Widget _buildSalesReportTypeSelector(BuildContext context, ReportViewModel vm) {
     return DropdownButtonFormField<SalesReportType>(
-      value: vm.salesReportType,
+      initialValue: vm.salesReportType,
       decoration: InputDecoration(
         labelText: AppLocalizations.of(context)!.reportType,
         border: const OutlineInputBorder(),
@@ -264,7 +264,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return Padding(
       padding: const EdgeInsets.only(top: 8.0),
       child: DropdownButtonFormField<Customer?>(
-        value: selectedCustomer,
+        initialValue: selectedCustomer,
         decoration: InputDecoration(
           labelText: AppLocalizations.of(context)!.selectCustomer,
           border: const OutlineInputBorder(),

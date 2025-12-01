@@ -45,7 +45,7 @@ class ProductSelectionForm extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value: selectedCustomerId,
+          initialValue: selectedCustomerId,
           isExpanded: true,
           decoration: const InputDecoration(
             border: OutlineInputBorder(),
@@ -71,7 +71,7 @@ class ProductSelectionForm extends StatelessWidget {
             Expanded(
               flex: 2,
               child: DropdownButtonFormField<String>(
-                value: selectedProductId,
+                initialValue: selectedProductId,
                 isExpanded: true,
                 hint: const Text("اختر المنتج"),
                 decoration: const InputDecoration(
