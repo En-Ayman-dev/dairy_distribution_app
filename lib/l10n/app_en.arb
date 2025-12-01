@@ -308,5 +308,54 @@
   "supplierHeaderPhone": "Phone",
   "supplierHeaderAddress": "Address",
   "grandTotalPaid": "Total Paid",
+  "currentBalanceLabel": "Current Balance",
+  "@currentBalanceLabel": {
+    "description": "Label for the customer's current balance/debt."
+  },
+  "currencySymbol": "YER",
+  "@currencySymbol": {
+    "description": "The local currency symbol (e.g.,YER, SAR)."
+  },
+  "notAvailable": "Not Available",
+  "@notAvailable": {
+    "description": "General text for data that is missing or not provided."
+  },
+  "exportTooltip": "Export",
+  "@exportTooltip": {
+    "description": "Tooltip text for the export button (PDF/Excel)."
+  },
+  "allSuppliersLabel": "All Suppliers",
+  "@allSuppliersLabel": {
+    "description": "Option in a dropdown to select all suppliers."
+  },
+  "deleteDistributionTitle": "Delete Distribution Invoice",
+  "@deleteDistributionTitle": {
+    "description": "Title of the confirmation dialog for deleting a distribution invoice."
+  },
+  "deleteDistributionConfirm": "Are you sure you want to delete this distribution invoice?",
+  "@deleteDistributionConfirm": {
+    "description": "Confirmation message for deletion."
+  },
+  "distributionUpdatedSuccess": "Invoice updated successfully",
+  "@distributionUpdatedSuccess": {
+    "description": "Success notification after updating an invoice."
+  },
+  "remainingAmount": "Remaining Amount",
+  "@remainingAmount": {
+    "description": "Label showing the amount remaining due from the customer."
+  },
+  "editLabel": "Edit",
+  "@editLabel": {
+    "description": "Button/title for the edit operation."
+  },
+  "printTooltip": "Print",
+  "@printTooltip": {
+    "description": "Tooltip for the print button."
+  },
+  "filterLabel": "Filter List",
+  "@filterLabel": {
+    "description": "Title and button to open filter options."
+  },
+  "selectPrinter":" Select Printer",
   "grandTotalRemaining": "Total Remaining"
 }

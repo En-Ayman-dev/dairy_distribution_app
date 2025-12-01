@@ -1817,6 +1817,84 @@ abstract class AppLocalizations {
   /// **'Total Paid'**
   String get grandTotalPaid;
 
+  /// Label for the customer's current balance/debt.
+  ///
+  /// In en, this message translates to:
+  /// **'Current Balance'**
+  String get currentBalanceLabel;
+
+  /// The local currency symbol (e.g.,YER, SAR).
+  ///
+  /// In en, this message translates to:
+  /// **'YER'**
+  String get currencySymbol;
+
+  /// General text for data that is missing or not provided.
+  ///
+  /// In en, this message translates to:
+  /// **'Not Available'**
+  String get notAvailable;
+
+  /// Tooltip text for the export button (PDF/Excel).
+  ///
+  /// In en, this message translates to:
+  /// **'Export'**
+  String get exportTooltip;
+
+  /// Option in a dropdown to select all suppliers.
+  ///
+  /// In en, this message translates to:
+  /// **'All Suppliers'**
+  String get allSuppliersLabel;
+
+  /// Title of the confirmation dialog for deleting a distribution invoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Distribution Invoice'**
+  String get deleteDistributionTitle;
+
+  /// Confirmation message for deletion.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this distribution invoice?'**
+  String get deleteDistributionConfirm;
+
+  /// Success notification after updating an invoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice updated successfully'**
+  String get distributionUpdatedSuccess;
+
+  /// Label showing the amount remaining due from the customer.
+  ///
+  /// In en, this message translates to:
+  /// **'Remaining Amount'**
+  String get remainingAmount;
+
+  /// Button/title for the edit operation.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get editLabel;
+
+  /// Tooltip for the print button.
+  ///
+  /// In en, this message translates to:
+  /// **'Print'**
+  String get printTooltip;
+
+  /// Title and button to open filter options.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter List'**
+  String get filterLabel;
+
+  /// No description provided for @selectPrinter.
+  ///
+  /// In en, this message translates to:
+  /// **' Select Printer'**
+  String get selectPrinter;
+
   /// No description provided for @grandTotalRemaining.
   ///
   /// In en, this message translates to:

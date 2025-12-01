@@ -178,25 +178,7 @@ class _DistributionDetailScreenState extends State<DistributionDetailScreen> {
       appBar: AppBar(
         title: Text('${t.distributionLabel} ${dist.customerName}'),
         actions: [
-          // زر الطباعة في الأعلى
-          if (_isPrinting)
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
-                ),
-              ),
-            )
-          else
-            PrintButton(
-              onPrint: (size, output, isReprint) async {
-                await _printInvoice(size);
-              },
-            ),
+          
         ],
       ),
       body: ListView(
@@ -235,6 +217,28 @@ class _DistributionDetailScreenState extends State<DistributionDetailScreen> {
                   icon: const Icon(Icons.payment),
                   label: Text(t.payLabel),
                 ),
+          const SizedBox(height: 16),
+          
+          // زر الطباعة في الأعلى
+          if (_isPrinting)
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              ),
+            )
+          else
+            PrintButton(
+              onPrint: (size, output, isReprint) async {
+                await _printInvoice(size);
+              },
+            ),
+          const SizedBox(height: 16),
         ],
       ),
     );

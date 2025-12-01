@@ -872,5 +872,44 @@ class AppLocalizationsAr extends AppLocalizations {
   String get grandTotalPaid => 'إجمالي المسدد';
 
   @override
+  String get currentBalanceLabel => 'الرصيد الحالي';
+
+  @override
+  String get currencySymbol => 'ريال';
+
+  @override
+  String get notAvailable => 'غير متاح';
+
+  @override
+  String get exportTooltip => 'تصدير';
+
+  @override
+  String get allSuppliersLabel => 'جميع الموردين';
+
+  @override
+  String get deleteDistributionTitle => 'حذف فاتورة التوزيع';
+
+  @override
+  String get deleteDistributionConfirm => 'هل أنت متأكد من حذف فاتورة التوزيع هذه؟';
+
+  @override
+  String get distributionUpdatedSuccess => 'تم تحديث الفاتورة بنجاح';
+
+  @override
+  String get remainingAmount => 'المبلغ المتبقي';
+
+  @override
+  String get editLabel => 'تعديل';
+
+  @override
+  String get printTooltip => 'طباعة';
+
+  @override
+  String get filterLabel => 'تصفية القائمة';
+
+  @override
+  String get selectPrinter => 'اختر الطابعة';
+
+  @override
   String get grandTotalRemaining => 'إجمالي المتبقي';
 }

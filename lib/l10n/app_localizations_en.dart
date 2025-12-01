@@ -872,5 +872,44 @@ class AppLocalizationsEn extends AppLocalizations {
   String get grandTotalPaid => 'Total Paid';
 
   @override
+  String get currentBalanceLabel => 'Current Balance';
+
+  @override
+  String get currencySymbol => 'YER';
+
+  @override
+  String get notAvailable => 'Not Available';
+
+  @override
+  String get exportTooltip => 'Export';
+
+  @override
+  String get allSuppliersLabel => 'All Suppliers';
+
+  @override
+  String get deleteDistributionTitle => 'Delete Distribution Invoice';
+
+  @override
+  String get deleteDistributionConfirm => 'Are you sure you want to delete this distribution invoice?';
+
+  @override
+  String get distributionUpdatedSuccess => 'Invoice updated successfully';
+
+  @override
+  String get remainingAmount => 'Remaining Amount';
+
+  @override
+  String get editLabel => 'Edit';
+
+  @override
+  String get printTooltip => 'Print';
+
+  @override
+  String get filterLabel => 'Filter List';
+
+  @override
+  String get selectPrinter => ' Select Printer';
+
+  @override
   String get grandTotalRemaining => 'Total Remaining';
 }

@@ -309,5 +309,55 @@
   "supplierHeaderPhone": "الهاتف",
   "supplierHeaderAddress": "العنوان",
   "grandTotalPaid": "إجمالي المسدد",
+  "currentBalanceLabel": "الرصيد الحالي",
+  "@currentBalanceLabel": {
+    "description": "عنوان لحقل الرصيد الحالي/المديونية للعميل."
+  },
+  "currencySymbol": "ريال",
+  "@currencySymbol": {
+    "description": "رمز العملة المحلية (مثل ريال يمني)."
+  },
+  "notAvailable": "غير متاح",
+  "@notAvailable": {
+    "description": "نص عام للبيانات المفقودة أو غير المتوفرة."
+  },
+  "exportTooltip": "تصدير",
+  "@exportTooltip": {
+    "description": "تلميح يظهر عند وضع مؤشر الفأرة على زر التصدير (PDF/Excel)."
+  },
+  "allSuppliersLabel": "جميع الموردين",
+  "@allSuppliersLabel": {
+    "description": "خيار في قائمة منسدلة لاختيار كل الموردين."
+  },
+  "deleteDistributionTitle": "حذف فاتورة التوزيع",
+  "@deleteDistributionTitle": {
+    "description": "عنوان ديالوج تأكيد حذف فاتورة توزيع."
+  },
+  "deleteDistributionConfirm": "هل أنت متأكد من حذف فاتورة التوزيع هذه؟",
+  "@deleteDistributionConfirm": {
+    "description": "رسالة تأكيد الحذف."
+  },
+
+  "distributionUpdatedSuccess": "تم تحديث الفاتورة بنجاح",
+  "@distributionUpdatedSuccess": {
+    "description": "رسالة إشعار بعد نجاح عملية تحديث الفاتورة."
+  },
+  "remainingAmount": "المبلغ المتبقي",
+  "@remainingAmount": {
+    "description": "عنوان يظهر المبلغ المتبقي على العميل."
+  },
+  "editLabel": "تعديل",
+  "@editLabel": {
+    "description": "زر/عنوان لعملية التعديل."
+  },
+  "printTooltip": "طباعة",
+  "@printTooltip": {
+    "description": "تلميح زر الطباعة."
+  },
+  "filterLabel": "تصفية القائمة",
+  "@filterLabel": {
+    "description": "عنوان وزر لفتح خيارات التصفية."
+  },
+  "selectPrinter": "اختر الطابعة",
   "grandTotalRemaining": "إجمالي المتبقي"
 }
