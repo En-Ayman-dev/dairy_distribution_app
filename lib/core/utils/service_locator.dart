@@ -44,7 +44,11 @@ Future<void> setupServiceLocator() async {
   getIt.registerLazySingleton(() => FirebaseFirestore.instance);
   getIt.registerLazySingleton(() => FirebaseAuth.instance);
   getIt.registerLazySingleton(() => Connectivity());
-  getIt.registerLazySingleton(() => InternetConnectionChecker());
+  // getIt.registerLazySingleton(() => InternetConnectionChecker());
+getIt.registerLazySingleton<InternetConnectionChecker>(
+  () => InternetConnectionChecker.createInstance(),
+);
+
   getIt.registerLazySingleton(() => Uuid());
 
   // ---------------------------------------------------------------------------
